@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: vf-telegram-bot
+    runtime: node
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: VOICEFLOW_API_KEY
+        sync: false
+      - key: VOICEFLOW_VERSION_ID
+        sync: false
