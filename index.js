@@ -13,7 +13,7 @@
 import 'dotenv/config';
 import axios from 'axios';
 import { Telegraf } from 'telegraf';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from './supabaseClient.js';
 
 import fs from 'fs/promises';
 import path from 'path';
@@ -63,9 +63,6 @@ if (!VF_API_KEY || !VF_VERSION_ID) {
 }
 
 const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
-
-// Initialize Supabase client
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const TMP_DIR = path.join(process.cwd(), 'tmp');
 const LOG_DIR = path.join(process.cwd(), 'logs');
