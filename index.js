@@ -736,11 +736,34 @@ if (process.env.NODE_ENV === 'production') {
             console.log(`✅ Webhook server is listening on port ${PORT}`);
             console.log(`📊 Listening for Telegram updates on /${WEBHOOK_URL.split('/').pop()}/webhook`);
         });
+        
+        // Handle graceful shutdown
+        process.on('SIGINT', () => {
+            console.log('SIGINT received, shutting down webhook server...');
+            server.close(() => {
+                console.log('Server closed');
+                process.exit(0);
+            });
+        });
+        
+        process.on('SIGTERM', () => {
+            console.log('SIGTERM received, shutting down webhook server...');
+            server.close(() => {
+                console.log('Server closed');
+                process.exit(0);
+            });
+        });
     });
 } else {
     // Polling mode for development
     console.log('🤖 Bot is running in POLLING mode...');
     bot.launch();
-    process.once('SIGINT', () => bot.stop('SIGINT'));
-    process.once('SIGTERM', () => bot.stop('SIGTERM'));
+    process.once('SIGINT', () => {
+        console.log('SIGINT received, stopping bot...');
+        bot.stop('SIGINT');
+    });
+    process.once('SIGTERM', () => {
+        console.log('SIGTERM received, stopping bot...');
+        bot.stop('SIGTERM');
+    });
 }
