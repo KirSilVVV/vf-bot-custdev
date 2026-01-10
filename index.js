@@ -463,7 +463,7 @@ if (process.env.NODE_ENV === 'production') {
                                             const data = update.callback_query.data;
                                             const from_id = update.callback_query.from.id;
                                             const callback_id = update.callback_query.id;
-                                            const answerText = 'Обработано';
+                                            let answerText = 'Обработано';
                                             let request_id = null;
                                             if (typeof data === 'string' && data.startsWith('vote:')) {
                                                 request_id = parseInt(data.slice(5), 10);
