@@ -486,6 +486,22 @@ bot.on('callback_query', async (ctx) => {
                 console.error('VOTE update count error:', updateErr);
             }
 
+            // Update vote buttons
+            try {
+                const chatId = ctx.callbackQuery.message.chat.id;
+                const messageId = ctx.callbackQuery.message.message_id;
+                const reply_markup = {
+                    inline_keyboard: [[
+                        { text: `👍 Голосовать (${count})`, callback_data: `vote:${requestId}` },
+                        { text: `🗳 Снять голос`, callback_data: `unvote:${requestId}` }
+                    ]]
+                };
+                await ctx.telegram.editMessageReplyMarkup(chatId, messageId, undefined, reply_markup);
+                console.log('TG editMessageReplyMarkup OK', { chatId, messageId, count });
+            } catch (e) {
+                console.error('TG editMessageReplyMarkup ERROR', e?.response?.description || e);
+            }
+
         } else if (typeof data === 'string' && data.startsWith('unvote:')) {
             requestId = parseInt(data.slice(7), 10);
             console.log('UNVOTE click:', { requestId, voterId, data });
@@ -532,6 +548,22 @@ bot.on('callback_query', async (ctx) => {
             
             if (updateErr) {
                 console.error('UNVOTE update count error:', updateErr);
+            }
+
+            // Update vote buttons
+            try {
+                const chatId = ctx.callbackQuery.message.chat.id;
+                const messageId = ctx.callbackQuery.message.message_id;
+                const reply_markup = {
+                    inline_keyboard: [[
+                        { text: `👍 Голосовать (${count})`, callback_data: `vote:${requestId}` },
+                        { text: `🗳 Снять голос`, callback_data: `unvote:${requestId}` }
+                    ]]
+                };
+                await ctx.telegram.editMessageReplyMarkup(chatId, messageId, undefined, reply_markup);
+                console.log('TG editMessageReplyMarkup OK', { chatId, messageId, count });
+            } catch (e) {
+                console.error('TG editMessageReplyMarkup ERROR', e?.response?.description || e);
             }
         }
     } catch (err) {
