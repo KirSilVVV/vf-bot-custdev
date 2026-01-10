@@ -14,25 +14,7 @@ import mammoth from 'mammoth';
 import { fileTypeFromBuffer } from 'file-type';
 import axios from 'axios';
 import { Telegraf } from 'telegraf';
-import('http').then(({ createServer }) => {
-    const server = createServer(async (req, res) => {
-        // Handle Telegram webhook (POST /telegram/webhook or /webhook)
-        if (req.method === 'POST' && (req.url === '/telegram/webhook' || req.url === '/webhook')) {
-            let body = '';
-            req.on('data', chunk => body += chunk);
-            req.on('end', async () => {
-                try {
-                                const update = JSON.parse(body);
-                                // Debug log
-                                console.log('TG WEBHOOK update:', JSON.stringify(update));
-                                // ... (rest of the code)
-                            } catch (err) {
-                                console.error('❌ Telegram webhook error:', err.message);
-                                res.writeHead(500, { 'Content-Type': 'application/json' });
-                                res.end(JSON.stringify({ ok: false, error: err.message }));
-                            }
-                        });
-                    } // end main server handler
+import { createClient } from '@supabase/supabase-js';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const VF_API_KEY = process.env.VOICEFLOW_API_KEY;
@@ -105,6 +87,19 @@ function sanitizeFilename(name) {
     return String(name || 'file')
         .replace(/[^\w.\-]+/g, '_')
         .slice(0, 120);
+}
+
+// Initialize Supabase
+import { createClient } from '@supabase/supabase-js';
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+// Download Telegram file
+async function downloadTelegramFile(fileUrl, fileName) {
+    await ensureDir(TMP_DIR);
+    const filePath = path.join(TMP_DIR, fileName);
+    const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
+    await fs.writeFile(filePath, response.data);
+    return filePath;
 }
 
 async function logExtracted({ userId, kind, fileName, extracted }) {
@@ -736,5 +731,17 @@ if (process.env.NODE_ENV === 'production') {
             // ...existing code for any other routes or logic...
             // ...existing code for any other routes or logic...
             // ...existing code for any other routes or logic...
-    }); // end createServer AND async handler
-}); // end import('http').then
+        });
+
+        server.listen(PORT, () => {
+            console.log(`✅ Webhook server is listening on port ${PORT}`);
+            console.log(`📊 Listening for Telegram updates on /${WEBHOOK_URL.split('/').pop()}/webhook`);
+        });
+    });
+} else {
+    // Polling mode for development
+    console.log('🤖 Bot is running in POLLING mode...');
+    bot.launch();
+    process.once('SIGINT', () => bot.stop('SIGINT'));
+    process.once('SIGTERM', () => bot.stop('SIGTERM'));
+}
