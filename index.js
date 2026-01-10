@@ -447,6 +447,16 @@ if (process.env.NODE_ENV === 'production') {
                                     // Debug log
                                     console.log('TG WEBHOOK update:', JSON.stringify(update));
 
+                                    // Log update type
+                                    if (update.message) {
+                                        console.log('📨 Update type: message');
+                                    } else if (update.callback_query) {
+                                        console.log('🔘 Update type: callback_query');
+                                        console.log(`   data: ${update.callback_query.data}`);
+                                        console.log(`   from.id: ${update.callback_query.from.id}`);
+                                        console.log(`   message.message_id: ${update.callback_query.message?.message_id}`);
+                                    }
+
                                     if (update.callback_query) {
                                         try {
                                             const data = update.callback_query.data;
