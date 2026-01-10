@@ -427,11 +427,12 @@ bot.on('document', async (ctx) => {
 
 const PORT = process.env.PORT || 3000;
 const WEBHOOK_URL = process.env.RENDER_EXTERNAL_URL || 'https://vf-telegram-bot.onrender.com';
+const WEBHOOK_PATH = '/webhook';
 
 // Use webhook mode for production (Render)
 if (process.env.NODE_ENV === 'production') {
     console.log(`🤖 Bot is running in WEBHOOK mode on port ${PORT}...`);
-    console.log(`📊 Webhook URL: ${WEBHOOK_URL}`);
+    console.log(`📊 Webhook URL: ${WEBHOOK_URL}${WEBHOOK_PATH}`);
     console.log('📊 Dialog text + files + OCR + logging');
 
     // Use http module for explicit webhook handling
@@ -753,7 +754,14 @@ if (process.env.NODE_ENV === 'production') {
 
         server.listen(PORT, '0.0.0.0', () => {
             console.log(`✅ Webhook server is listening on 0.0.0.0:${PORT}`);
-            console.log(`📊 Listening for Telegram updates on /${WEBHOOK_URL.split('/').pop()}/webhook`);
+            console.log(`📊 Listening for Telegram updates on ${WEBHOOK_URL}${WEBHOOK_PATH}`);
+            
+            // Set webhook with Telegram
+            bot.telegram.setWebhook(`${WEBHOOK_URL}${WEBHOOK_PATH}`).then(() => {
+                console.log(`✅ Telegram webhook set to: ${WEBHOOK_URL}${WEBHOOK_PATH}`);
+            }).catch((err) => {
+                console.error('❌ Failed to set webhook:', err.message);
+            });
         });
         
         // Handle graceful shutdown
