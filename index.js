@@ -25,9 +25,22 @@ import { fileTypeFromBuffer } from 'file-type';
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const VF_API_KEY = process.env.VOICEFLOW_API_KEY;
 const VF_VERSION_ID = process.env.VOICEFLOW_VERSION_ID;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const TELEGRAM_CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID;
 
-if (!TELEGRAM_BOT_TOKEN || !VF_API_KEY || !VF_VERSION_ID) {
-    console.error('❌ Missing .env vars: TELEGRAM_BOT_TOKEN, VOICEFLOW_API_KEY, VOICEFLOW_VERSION_ID');
+if (!TELEGRAM_BOT_TOKEN || !VF_API_KEY || !VF_VERSION_ID || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !TELEGRAM_CHANNEL_ID) {
+    const missing = [];
+    if (!TELEGRAM_BOT_TOKEN) missing.push('TELEGRAM_BOT_TOKEN');
+    if (!VF_API_KEY) missing.push('VOICEFLOW_API_KEY');
+    if (!VF_VERSION_ID) missing.push('VOICEFLOW_VERSION_ID');
+    if (!SUPABASE_URL) missing.push('SUPABASE_URL');
+    if (!SUPABASE_SERVICE_ROLE_KEY) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+    if (!TELEGRAM_CHANNEL_ID) missing.push('TELEGRAM_CHANNEL_ID');
+    
+    console.error('❌ Missing required environment variables:');
+    missing.forEach(v => console.error(`   - ${v}`));
+    console.error('\n📝 Please set these variables in your .env file or Render dashboard');
     process.exit(1);
 }
 
