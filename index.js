@@ -15,6 +15,7 @@ import { fileTypeFromBuffer } from 'file-type';
 import axios from 'axios';
 import { Telegraf } from 'telegraf';
 import { createClient } from '@supabase/supabase-js';
+import express from 'express';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const VF_API_KEY = process.env.VOICEFLOW_API_KEY;
@@ -550,207 +551,162 @@ if (process.env.NODE_ENV === 'production') {
     console.log(`📊 Webhook URL: ${WEBHOOK_URL}${WEBHOOK_PATH}`);
     console.log('📊 Dialog text + files + OCR + logging');
 
-    // Use http module for explicit webhook handling
-    import('http').then(({ createServer }) => {
-        const server = createServer(async (req, res) => {
-                        // Handle Telegram webhook (POST /telegram/webhook or /webhook)
-                        if (req.method === 'POST' && (req.url === '/telegram/webhook' || req.url === '/webhook')) {
-                            let body = '';
-                            req.on('data', chunk => body += chunk);
-                            req.on('end', async () => {
-                                try {
-                                    const update = JSON.parse(body);
-                                    // Debug log
-                                    console.log('TG WEBHOOK update:', JSON.stringify(update));
+    const app = express();
+    
+    // JSON parser middleware (before routes)
+    app.use(express.json({ limit: '2mb' }));
 
-                                    // Log update type
-                                    if (update.message) {
-                                        console.log('📨 Update type: message');
-                                    } else if (update.callback_query) {
-                                        console.log('🔘 Update type: callback_query');
-                                        console.log(`   data: ${update.callback_query.data}`);
-                                        console.log(`   from.id: ${update.callback_query.from.id}`);
-                                        console.log(`   message.message_id: ${update.callback_query.message?.message_id}`);
-                                    }
-                                    // Handle all updates through bot.handleUpdate
-                                    try {
-                                        await bot.handleUpdate(update);
-                                    } catch (e) {
-                                        console.error('bot.handleUpdate error:', e);
-                                    }
-                                    // Always respond with 200, exactly once
-                                    if (!res.headersSent) {
-                                        res.writeHead(200, { 'Content-Type': 'application/json' });
-                                        res.end(JSON.stringify({ ok: true }));
-                                    }
-                                } catch (err) {
-                                    console.error('❌ Telegram webhook error:', err.message);
-                                    if (!res.headersSent) {
-                                        res.writeHead(200, { 'Content-Type': 'application/json' });
-                                        res.end(JSON.stringify({ ok: true }));
-                                    }
-                                }
-                            });
-                        }
-            // Handle OPTIONS /vf/submit (CORS preflight)
-            if (req.method === 'OPTIONS' && req.url === '/vf/submit') {
-                res.setHeader('Access-Control-Allow-Origin', '*');
-                res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-                res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-vf-secret');
-                res.writeHead(204);
-                res.end();
-                return;
+    // Handle OPTIONS /vf/submit (CORS preflight)
+    app.options('/vf/submit', (req, res) => {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-vf-secret');
+        return res.sendStatus(204);
+    });
+
+    // Telegram webhook
+    app.post(WEBHOOK_PATH, async (req, res) => {
+        try {
+            const update = req.body;
+            console.log('TG WEBHOOK update:', JSON.stringify(update));
+
+            // Log update type
+            if (update.message) {
+                console.log('📨 Update type: message');
+            } else if (update.callback_query) {
+                console.log('🔘 Update type: callback_query');
+                console.log(`   data: ${update.callback_query.data}`);
+                console.log(`   from.id: ${update.callback_query.from.id}`);
+                console.log(`   message.message_id: ${update.callback_query.message?.message_id}`);
             }
-            // Handle POST /vf/submit
-            if (req.method === 'POST' && req.url === '/vf/submit') {
-                // Add CORS headers
-                res.setHeader('Access-Control-Allow-Origin', '*');
-                
-                let body = '';
-                req.on('data', chunk => body += chunk);
-                req.on('end', async () => {
-                    try {
-                        // Log Voiceflow incoming request
-                        console.log('VF SUBMIT headers:', req.headers['content-type'], req.headers['x-vf-secret'] ? 'has_secret' : 'no_secret');
-                        console.log('VF SUBMIT body:', JSON.stringify(body));
-                        let payload = {};
-                        try {
-                            payload = JSON.parse(body);
-                        } catch (e) {
-                            console.log('VF SUBMIT body parse error:', e.message);
-                        }
-                        console.log('VF SUBMIT tags isArray:', Array.isArray(payload?.tags), payload?.tags);
-                        console.log('VF SUBMIT payload:', payload);
 
-                        // Normalize and default fields
-                        const title = (payload.title ?? payload.request_type ?? payload.request_title ?? '').toString().trim();
-                        const description = (payload.description ?? payload.request_text ?? payload.text ?? '').toString().trim();
-                        const safeTitle = title.length ? title : 'Без названия';
-                        const safeDescription = description.length ? description : '—';
-                        const author_tg_id = Number.isFinite(+payload.author_tg_id) ? +payload.author_tg_id : (Number.isFinite(+payload.user_id) ? +payload.user_id : null);
-                        const author_username = (payload.author_username ?? payload.user_name ?? null);
-                        const tags = Array.isArray(payload.tags) ? payload.tags : [];
-                        const domain = typeof payload.domain === 'string' ? payload.domain : '';
-                        const status = 'published';
+            // Handle all updates through bot.handleUpdate
+            await bot.handleUpdate(update);
+        } catch (err) {
+            console.error('❌ Telegram webhook error:', err.message);
+        }
+        // Telegram always gets 200, otherwise it will accumulate pending updates
+        return res.sendStatus(200);
+    });
 
-                        // Log real values
-                        console.log('VF SUBMIT received:', { title: safeTitle, descriptionLength: safeDescription.length, author_tg_id });
+    // POST /vf/submit endpoint
+    app.post('/vf/submit', async (req, res) => {
+        res.setHeader('Access-Control-Allow-Origin', '*');
 
-                        // Validation
-                        if (typeof safeTitle !== 'string' || safeTitle.length < 3) {
-                            res.writeHead(400, { 'Content-Type': 'application/json' });
-                            res.end(JSON.stringify({ ok: false, error: 'title must be a string with at least 3 characters' }));
-                            return;
-                        }
-                        if (typeof safeDescription !== 'string' || safeDescription.length < 10) {
-                            console.log('VF SUBMIT description too short, incoming fields:', payload);
-                            res.writeHead(400, { 'Content-Type': 'application/json' });
-                            res.end(JSON.stringify({ ok: false, error: 'description must be a string with at least 10 characters' }));
-                            return;
-                        }
-                        if (tags && (!Array.isArray(tags) || !tags.every(tag => typeof tag === 'string'))) {
-                            res.writeHead(400, { 'Content-Type': 'application/json' });
-                            res.end(JSON.stringify({ ok: false, error: 'tags must be an array of strings' }));
-                            return;
-                        }
-                        if (author_tg_id && typeof author_tg_id !== 'number') {
-                            res.writeHead(400, { 'Content-Type': 'application/json' });
-                            res.end(JSON.stringify({ ok: false, error: 'author_tg_id must be a number' }));
-                            return;
-                        }
-                        if (author_username && typeof author_username !== 'string') {
-                            res.writeHead(400, { 'Content-Type': 'application/json' });
-                            res.end(JSON.stringify({ ok: false, error: 'author_username must be a string' }));
-                            return;
-                        }
+        try {
+            const payload = req.body;
 
-                        // Only insert normalized fields
-                        const result = await publishRequestToChannel({
-                            author_tg_id,
-                            author_username,
-                            title: safeTitle,
-                            description: safeDescription,
-                            tags,
-                            domain,
-                            status
-                        });
+            // Log Voiceflow incoming request
+            console.log('VF SUBMIT headers:', req.headers['content-type'], req.headers['x-vf-secret'] ? 'has_secret' : 'no_secret');
+            console.log('VF SUBMIT body:', JSON.stringify(payload));
+            console.log('VF SUBMIT tags isArray:', Array.isArray(payload?.tags), payload?.tags);
+            console.log('VF SUBMIT payload:', payload);
 
-                        res.writeHead(200, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify({
-                            ok: true,
-                            request_id: result.request_id,
-                            channel_message_id: result.channel_message_id
-                        }));
-                    } catch (err) {
-                        console.error('❌ POST /vf/submit error:', err.message);
-                        res.writeHead(500, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify({
-                            ok: false,
-                            error: err.message,
-                        }));
-                    }
-                });
-                return;
+            // Normalize and default fields
+            const title = (payload.title ?? payload.request_type ?? payload.request_title ?? '').toString().trim();
+            const description = (payload.description ?? payload.request_text ?? payload.text ?? '').toString().trim();
+            const safeTitle = title.length ? title : 'Без названия';
+            const safeDescription = description.length ? description : '—';
+            const author_tg_id = Number.isFinite(+payload.author_tg_id) ? +payload.author_tg_id : (Number.isFinite(+payload.user_id) ? +payload.user_id : null);
+            const author_username = (payload.author_username ?? payload.user_name ?? null);
+            const tags = Array.isArray(payload.tags) ? payload.tags : [];
+            const domain = typeof payload.domain === 'string' ? payload.domain : '';
+            const status = 'published';
+
+            // Log real values
+            console.log('VF SUBMIT received:', { title: safeTitle, descriptionLength: safeDescription.length, author_tg_id });
+
+            // Validation
+            if (typeof safeTitle !== 'string' || safeTitle.length < 3) {
+                return res.status(400).json({ ok: false, error: 'title must be a string with at least 3 characters' });
             }
-            // Handle GET / for health checks
-            if (req.method === 'GET' && req.url === '/') {
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ ok: true, status: 'running' }));
-                return;
+            if (typeof safeDescription !== 'string' || safeDescription.length < 10) {
+                console.log('VF SUBMIT description too short, incoming fields:', payload);
+                return res.status(400).json({ ok: false, error: 'description must be a string with at least 10 characters' });
             }
-            // Default 404 for other routes
-            res.writeHead(404, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ ok: false, error: 'Not found' }));
-            // ...existing code for any other routes or logic...
-            // ...existing code for any other routes or logic...
-            // ...existing code for any other routes or logic...
-            // ...existing code for any other routes or logic...
-            // ...existing code for any other routes or logic...
-        });
+            if (tags && (!Array.isArray(tags) || !tags.every(tag => typeof tag === 'string'))) {
+                return res.status(400).json({ ok: false, error: 'tags must be an array of strings' });
+            }
+            if (author_tg_id && typeof author_tg_id !== 'number') {
+                return res.status(400).json({ ok: false, error: 'author_tg_id must be a number' });
+            }
+            if (author_username && typeof author_username !== 'string') {
+                return res.status(400).json({ ok: false, error: 'author_username must be a string' });
+            }
 
-        server.listen(PORT, '0.0.0.0', () => {
-            console.log(`✅ Webhook server is listening on 0.0.0.0:${PORT}`);
-            console.log(`📊 Listening for Telegram updates on ${WEBHOOK_URL}${WEBHOOK_PATH}`);
-            
-            // Set webhook with Telegram
-            bot.telegram.setWebhook(`${WEBHOOK_URL}${WEBHOOK_PATH}`).then(() => {
-                console.log(`✅ Telegram webhook set to: ${WEBHOOK_URL}${WEBHOOK_PATH}`);
-            }).catch((err) => {
-                console.error('❌ Failed to set webhook:', err.message);
+            // Only insert normalized fields
+            const result = await publishRequestToChannel({
+                author_tg_id,
+                author_username,
+                title: safeTitle,
+                description: safeDescription,
+                tags,
+                domain,
+                status
             });
-        });
-        
-        // Handle graceful shutdown
-        let shuttingDown = false;
-        process.on('SIGINT', () => {
-            if (shuttingDown) return;
-            shuttingDown = true;
-            console.log('SIGINT received, shutting down webhook server...');
-            server.close(() => {
-                console.log('Server closed');
-                process.exit(0);
+
+            return res.status(200).json({
+                ok: true,
+                request_id: result.request_id,
+                channel_message_id: result.channel_message_id
             });
-            // Force exit after 10 seconds
-            setTimeout(() => {
-                console.log('Forced shutdown after timeout');
-                process.exit(1);
-            }, 10000);
-        });
-        
-        process.on('SIGTERM', () => {
-            if (shuttingDown) return;
-            shuttingDown = true;
-            console.log('SIGTERM received, shutting down webhook server...');
-            server.close(() => {
-                console.log('Server closed');
-                process.exit(0);
+        } catch (err) {
+            console.error('❌ POST /vf/submit error:', err.message);
+            return res.status(500).json({
+                ok: false,
+                error: err.message,
             });
-            // Force exit after 30 seconds
-            setTimeout(() => {
-                console.log('Forced shutdown after timeout');
-                process.exit(1);
-            }, 30000);
+        }
+    });
+
+    // Health check
+    app.get('/', (req, res) => {
+        return res.json({ ok: true, status: 'running' });
+    });
+
+    // Start server
+    const server = app.listen(PORT, '0.0.0.0', () => {
+        console.log(`✅ Webhook server is listening on 0.0.0.0:${PORT}`);
+        console.log(`📊 Listening for Telegram updates on ${WEBHOOK_URL}${WEBHOOK_PATH}`);
+
+        // Set webhook with Telegram
+        bot.telegram.setWebhook(`${WEBHOOK_URL}${WEBHOOK_PATH}`).then(() => {
+            console.log(`✅ Telegram webhook set to: ${WEBHOOK_URL}${WEBHOOK_PATH}`);
+        }).catch((err) => {
+            console.error('❌ Failed to set webhook:', err.message);
         });
+    });
+
+    // Handle graceful shutdown
+    let shuttingDown = false;
+    process.on('SIGINT', () => {
+        if (shuttingDown) return;
+        shuttingDown = true;
+        console.log('SIGINT received, shutting down server...');
+        server.close(() => {
+            console.log('Server closed');
+            process.exit(0);
+        });
+        // Force exit after 10 seconds
+        setTimeout(() => {
+            console.log('Forced shutdown after timeout');
+            process.exit(1);
+        }, 10000);
+    });
+
+    process.on('SIGTERM', () => {
+        if (shuttingDown) return;
+        shuttingDown = true;
+        console.log('SIGTERM received, shutting down server...');
+        server.close(() => {
+            console.log('Server closed');
+            process.exit(0);
+        });
+        // Force exit after 30 seconds
+        setTimeout(() => {
+            console.log('Forced shutdown after timeout');
+            process.exit(1);
+        }, 30000);
     });
 } else {
     // Polling mode for development
