@@ -625,17 +625,22 @@ if (process.env.NODE_ENV === 'production') {
                                             console.error('Vote/unvote handler error:', errVote);
                                             answerText = 'Ошибка обработки голосования';
                                         }
-                                        // Always answer callback query
+                                        // Always answer callback query using Telegram API directly
                                         try {
-                                            await bot.telegram.answerCallbackQuery(callbackId, { 
-                                                text: answerText, 
-                                                show_alert: false 
-                                            });
+                                            await axios.post(
+                                                `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+                                                {
+                                                    callback_query_id: callbackId,
+                                                    text: answerText,
+                                                    show_alert: false
+                                                }
+                                            );
                                         } catch (e) {
                                             console.error('answerCallbackQuery error:', e);
                                         }
                                     } else {
                                         // Handle other updates (message, etc.) through bot.handleUpdate
+                                        // Don't pass res to avoid duplicate responses
                                         try {
                                             await bot.handleUpdate(update);
                                         } catch (e) {
