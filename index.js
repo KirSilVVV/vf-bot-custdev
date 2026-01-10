@@ -607,16 +607,17 @@ if (process.env.NODE_ENV === 'production') {
                 req.on('data', chunk => body += chunk);
                 req.on('end', async () => {
                     try {
-                        // Diagnostics
-                        console.log('VF SUBMIT content-type:', req.headers['content-type']);
-                        console.log('VF SUBMIT raw body:', body);
+                        // Log Voiceflow incoming request
+                        console.log('VF SUBMIT headers:', req.headers['content-type'], req.headers['x-vf-secret'] ? 'has_secret' : 'no_secret');
+                        console.log('VF SUBMIT body:', JSON.stringify(body));
                         let payload = {};
                         try {
                             payload = JSON.parse(body);
                         } catch (e) {
                             console.log('VF SUBMIT body parse error:', e.message);
                         }
-                        console.log('VF SUBMIT body keys:', Object.keys(payload || {}));
+                        console.log('VF SUBMIT tags isArray:', Array.isArray(payload?.tags), payload?.tags);
+                        console.log('VF SUBMIT payload:', payload);
 
                         // Normalize and default fields
                         const title = (payload.title ?? payload.request_type ?? payload.request_title ?? '').toString().trim();
