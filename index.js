@@ -459,7 +459,7 @@ if (process.env.NODE_ENV === 'production') {
                                     }
 
                                     if (update.callback_query) {
-                                        let data, from_id, callback_id, answerText = 'Обработано', request_id = null;
+                                        let data = '', from_id = null, callback_id = null, answerText = 'Обработано', request_id = null;
                                         try {
                                             data = update.callback_query.data;
                                             from_id = update.callback_query.from.id;
