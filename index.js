@@ -123,17 +123,29 @@ async function publishRequestToChannel(requestData) {
      * @returns {Object} - { ok, request_id, channel_message_id, channel_chat_id }
      */
     try {
-        // 1) Create record in Supabase requests table
+        // 1) Create record in Supabase public.requests table
+        // Normalize fields for insert
+        // Only use author_tg_id if it's a number, else null
+        let tgIdRaw = requestData.author_tg_id ?? requestData.user_id;
+        const author_tg_id = Number.isFinite(+tgIdRaw) ? +tgIdRaw : null;
+        const author_username = requestData.author_username || requestData.user_name || 'Anonymous';
+        // Prefer explicit title, else fallback to request_type
+        const title = requestData.title || requestData.request_type || '';
+        // Prefer explicit description, else fallback to request_text
+        const description = requestData.description || requestData.request_text || '';
+        const tags = requestData.tags || [];
+        const domain = requestData.domain || '';
+
         const { data: insertedRequest, error: insertError } = await supabase
             .from('requests')
             .insert({
-                user_id: requestData.user_id,
-                user_name: requestData.user_name || 'Anonymous',
-                request_text: requestData.request_text,
-                request_type: requestData.request_type || 'text',
-                metadata: requestData.metadata || {},
-                status: 'pending',
-                created_at: new Date().toISOString(),
+                author_tg_id,
+                author_username,
+                title,
+                description,
+                tags,
+                domain,
+                status: 'published',
             })
             .select()
             .single();
@@ -147,7 +159,25 @@ async function publishRequestToChannel(requestData) {
         console.log(`✅ Created request in Supabase: ${requestId}`);
 
         // 2) Publish message to Telegram channel
-        const messageText = `<b>🆕 Новый запрос</b>\n\n<b>ID:</b> ${requestId}\n<b>Тип:</b> ${requestData.request_type || 'text'}\n<b>От:</b> ${requestData.user_name || 'Anonymous'}\n\n<b>Текст:</b>\n${requestData.request_text}`;
+
+        // Форматируем текст для Telegram
+        const tagsText = (requestData.tags && requestData.tags.length)
+            ? requestData.tags.join(', ')
+            : '—';
+        const authorText = requestData.author_username ? `@${requestData.author_username}` : '—';
+        const authorIdText = requestData.author_tg_id ? requestData.author_tg_id : '—';
+        const titleText = requestData.title || '';
+        const descriptionText = requestData.description || '';
+
+        const messageText = `🧩 <b>${titleText}</b>\n\n${descriptionText}\n\nТеги: ${tagsText}\nАвтор: ${authorText} (id:${authorIdText})\nID: ${requestId}`;
+
+        // Inline keyboard for voting
+        const inline_keyboard = [
+            [
+                { text: `👍 Голосовать (0)`, callback_data: `vote:${requestId}` },
+                { text: `🗳 Снять голос`, callback_data: `unvote:${requestId}` }
+            ]
+        ];
 
         const telegramResponse = await axios.post(
             `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
@@ -155,6 +185,8 @@ async function publishRequestToChannel(requestData) {
                 chat_id: TELEGRAM_CHANNEL_ID,
                 text: messageText,
                 parse_mode: 'HTML',
+                disable_web_page_preview: true,
+                reply_markup: { inline_keyboard },
             },
             {
                 timeout: 10000,
@@ -174,12 +206,13 @@ async function publishRequestToChannel(requestData) {
 
         console.log(`✅ Published to Telegram: message_id=${messageId}, chat_id=${chatId}`);
 
+
         // 3) Update request record with message info
         const { error: updateError } = await supabase
             .from('requests')
             .update({
                 channel_message_id: messageId,
-                channel_chat_id: chatId,
+                channel_chat_id: TELEGRAM_CHANNEL_ID,
             })
             .eq('id', requestId);
 
@@ -410,94 +443,333 @@ if (process.env.NODE_ENV === 'production') {
     // Use http module for explicit webhook handling
     import('http').then(({ createServer }) => {
         const server = createServer(async (req, res) => {
+                        // Handle Telegram webhook (POST /telegram/webhook or /webhook)
+                        if (req.method === 'POST' && (req.url === '/telegram/webhook' || req.url === '/webhook')) {
+                            let body = '';
+                            req.on('data', chunk => body += chunk);
+                            req.on('end', async () => {
+                                try {
+                                    const update = JSON.parse(body);
+                                    // Debug log
+                                    console.log('TG WEBHOOK update:', JSON.stringify(update));
+
+                                    if (update.callback_query) {
+                                        const data = update.callback_query.data;
+                                        const from_id = update.callback_query.from.id;
+                                        const callback_id = update.callback_query.id;
+                                        let answerText = 'Обработано';
+                                        let request_id = null;
+                                        try {
+                                            if (typeof data === 'string' && data.startsWith('vote:')) {
+                                                request_id = parseInt(data.slice(5), 10);
+                                                if (!Number.isFinite(request_id)) {
+                                                    answerText = 'Ошибка: заявка не найдена';
+                                                } else {
+                                                    // Проверить, существует ли заявка
+                                                    const { data: reqExists, error: reqErr } = await supabase
+                                                        .from('requests')
+                                                        .select('id')
+                                                        .eq('id', request_id)
+                                                        .maybeSingle();
+                                                    if (!reqExists) {
+                                                        answerText = 'Ошибка: заявка не найдена';
+                                                    } else {
+                                                        // Проверить, был ли уже голос
+                                                        const { data: existingVote } = await supabase
+                                                            .from('votes')
+                                                            .select('request_id')
+                                                            .eq('request_id', request_id)
+                                                            .eq('voter_tg_id', from_id)
+                                                            .maybeSingle();
+                                                        if (existingVote) {
+                                                            answerText = 'Вы уже голосовали';
+                                                        } else {
+                                                            // Голосование: upsert голос
+                                                            try {
+                                                                await supabase.from('votes').insert({ request_id, voter_tg_id: from_id }, { onConflict: ['request_id', 'voter_tg_id'] });
+                                                            } catch (e) {
+                                                                // ignore conflict
+                                                            }
+                                                            answerText = 'Голос учтён 👍';
+                                                        }
+                                                        // Посчитать голоса
+                                                        let voteCount = 0;
+                                                        try {
+                                                            const { data: countData } = await supabase
+                                                                .from('votes')
+                                                                .select('voter_tg_id', { count: 'exact', head: true })
+                                                                .eq('request_id', request_id);
+                                                            voteCount = countData?.length ?? 0;
+                                                        } catch (e) {
+                                                            console.error('Vote count error:', e);
+                                                        }
+                                                        // Обновить requests.vote_count
+                                                        try {
+                                                            await supabase.from('requests').update({ vote_count: voteCount }).eq('id', request_id);
+                                                        } catch (e) {
+                                                            console.error('Update vote_count error:', e);
+                                                        }
+                                                        // Получить chat_id и message_id
+                                                        try {
+                                                            const { data: reqRow } = await supabase
+                                                                .from('requests')
+                                                                .select('channel_chat_id, channel_message_id')
+                                                                .eq('id', request_id)
+                                                                .single();
+                                                            if (reqRow && reqRow.channel_chat_id && reqRow.channel_message_id) {
+                                                                // Обновить inline-клавиатуру
+                                                                try {
+                                                                    await axios.post(
+                                                                        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`,
+                                                                        {
+                                                                            chat_id: reqRow.channel_chat_id,
+                                                                            message_id: reqRow.channel_message_id,
+                                                                            reply_markup: {
+                                                                                inline_keyboard: [
+                                                                                    [
+                                                                                        { text: `👍 Голосовать (${voteCount})`, callback_data: `vote:${request_id}` },
+                                                                                        { text: `🗳 Снять голос`, callback_data: `unvote:${request_id}` }
+                                                                                    ]
+                                                                                ]
+                                                                            }
+                                                                        }
+                                                                    );
+                                                                } catch (e) {
+                                                                    console.error('editMessageReplyMarkup error:', e);
+                                                                }
+                                                            }
+                                                        } catch (e) {
+                                                            console.error('Get channel info error:', e);
+                                                        }
+                                                    }
+                                                }
+                                            } else if (typeof data === 'string' && data.startsWith('unvote:')) {
+                                                request_id = parseInt(data.slice(7), 10);
+                                                if (!Number.isFinite(request_id)) {
+                                                    answerText = 'Ошибка: заявка не найдена';
+                                                } else {
+                                                    // Проверить, существует ли заявка
+                                                    const { data: reqExists, error: reqErr } = await supabase
+                                                        .from('requests')
+                                                        .select('id')
+                                                        .eq('id', request_id)
+                                                        .maybeSingle();
+                                                    if (!reqExists) {
+                                                        answerText = 'Ошибка: заявка не найдена';
+                                                    } else {
+                                                        // Удалить голос (идемпотентно)
+                                                        try {
+                                                            await supabase.from('votes').delete().eq('request_id', request_id).eq('voter_tg_id', from_id);
+                                                        } catch (e) {
+                                                            console.error('Unvote error:', e);
+                                                        }
+                                                        answerText = 'Голос снят';
+                                                        // Посчитать голоса
+                                                        let voteCount = 0;
+                                                        try {
+                                                            const { data: countData } = await supabase
+                                                                .from('votes')
+                                                                .select('voter_tg_id', { count: 'exact', head: true })
+                                                                .eq('request_id', request_id);
+                                                            voteCount = countData?.length ?? 0;
+                                                        } catch (e) {
+                                                            console.error('Vote count error:', e);
+                                                        }
+                                                        // Обновить requests.vote_count
+                                                        try {
+                                                            await supabase.from('requests').update({ vote_count: voteCount }).eq('id', request_id);
+                                                        } catch (e) {
+                                                            console.error('Update vote_count error:', e);
+                                                        }
+                                                        // Получить chat_id и message_id
+                                                        try {
+                                                            const { data: reqRow } = await supabase
+                                                                .from('requests')
+                                                                .select('channel_chat_id, channel_message_id')
+                                                                .eq('id', request_id)
+                                                                .single();
+                                                            if (reqRow && reqRow.channel_chat_id && reqRow.channel_message_id) {
+                                                                // Обновить inline-клавиатуру
+                                                                try {
+                                                                    await axios.post(
+                                                                        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`,
+                                                                        {
+                                                                            chat_id: reqRow.channel_chat_id,
+                                                                            message_id: reqRow.channel_message_id,
+                                                                            reply_markup: {
+                                                                                inline_keyboard: [
+                                                                                    [
+                                                                                        { text: `👍 Голосовать (${voteCount})`, callback_data: `vote:${request_id}` },
+                                                                                        { text: `🗳 Снять голос`, callback_data: `unvote:${request_id}` }
+                                                                                    ]
+                                                                                ]
+                                                                            }
+                                                                        }
+                                                                    );
+                                                                } catch (e) {
+                                                                    console.error('editMessageReplyMarkup error:', e);
+                                                                }
+                                                            }
+                                                        } catch (e) {
+                                                            console.error('Get channel info error:', e);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        } catch (errVote) {
+                                            console.error('Vote/unvote handler error:', errVote);
+                                            answerText = 'Ошибка обработки голосования';
+                                        }
+                                        // Always answer callback query
+                                        try {
+                                            await axios.post(
+                                                `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+                                                {
+                                                    callback_query_id: callback_id,
+                                                    text: answerText,
+                                                    show_alert: false
+                                                }
+                                            );
+                                        } catch (e) {
+                                            console.error('answerCallbackQuery error:', e);
+                                        }
+                                    }
+                                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                                    res.end(JSON.stringify({ ok: true }));
+                                        }
+                                        // Always answer callback query
+                                        await axios.post(
+                                            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+                                            {
+                                                callback_query_id: callback_id,
+                                                text: answerText,
+                                                show_alert: false
+                                            }
+                                        );
+                                    }
+                                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                                    res.end(JSON.stringify({ ok: true }));
+                                } catch (err) {
+                                    console.error('❌ Telegram webhook error:', err.message);
+                                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                                    res.end(JSON.stringify({ ok: false, error: err.message }));
+                                }
+                            });
+                            return;
+                        }
             // Handle POST /vf/submit
             if (req.method === 'POST' && req.url === '/vf/submit') {
                 let body = '';
                 req.on('data', chunk => body += chunk);
                 req.on('end', async () => {
                     try {
-                        const payload = JSON.parse(body);
-                        
-                        console.log('📨 POST /vf/submit received:', {
-                            user_id: payload.user_id,
-                            request_type: payload.request_type,
-                            text_len: (payload.request_text || '').length,
-                        });
+                        // Debug log: content-type
+                        console.log('VF SUBMIT content-type:', req.headers['content-type']);
 
-                        const result = await publishRequestToChannel({
-                            user_id: payload.user_id || 'unknown',
-                            user_name: payload.user_name || 'Anonymous',
-                            request_text: payload.request_text || '',
-                            request_type: payload.request_type || 'text',
-                            metadata: payload.metadata || {},
-                        });
+                        // Try to parse JSON
+                        let payload = {};
+                        try {
+                            payload = JSON.parse(body);
+                        } catch (e) {
+                            console.log('VF SUBMIT body parse error:', e.message);
+                        }
 
-                        res.writeHead(200, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify(result));
-                    } catch (err) {
-                        console.error('❌ POST /vf/submit error:', err.message);
-                        res.writeHead(500, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify({
-                            ok: false,
-                            error: err.message,
-                        }));
-                    }
-                });
-                return;
-            }
+                        // Debug log: body and keys
+                        console.log('VF SUBMIT raw body:', body);
+                        console.log('VF SUBMIT body keys:', Object.keys(payload || {}));
 
-            // Only handle POST requests
-            if (req.method === 'POST') {
-                let body = '';
-                req.on('data', chunk => body += chunk);
-                req.on('end', async () => {
-                    try {
-                        const update = JSON.parse(body);
-                        await bot.handleUpdate(update);
-                        res.writeHead(200, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify({ ok: true }));
-                    } catch (err) {
-                        console.error('Webhook error:', err.message);
-                        res.writeHead(500, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify({ ok: false, error: err.message }));
-                    }
-                });
-            } else {
-                // Return 403 for non-POST (expected behavior)
-                res.writeHead(403, { 'Content-Type': 'text/plain' });
-                res.end('Forbidden');
-            }
-        });
 
-        server.listen(PORT, '0.0.0.0', () => {
-            console.log(`✅ HTTP webhook server listening on port ${PORT}`);
-            
-            // Set webhook with Telegram
-            bot.telegram.setWebhook(`${WEBHOOK_URL}`).then(() => {
-                console.log(`✅ Telegram webhook set to: ${WEBHOOK_URL}`);
-            }).catch(err => {
-                console.error('❌ Failed to set webhook:', err.message);
-            });
-        });
+                        // Strict mapping for normalized fields only
+                        const title = typeof payload.title === 'string' && payload.title.trim().length > 0
+                            ? payload.title.trim()
+                            : (typeof payload.request_type === 'string' && payload.request_type.trim().length > 0 ? payload.request_type.trim() : 'Без названия');
 
-        // Graceful shutdown
-        process.once('SIGINT', () => {
-            console.log('Shutting down...');
-            bot.stop('SIGINT');
-            server.close();
-        });
-        process.once('SIGTERM', () => {
-            console.log('Shutting down...');
-            bot.stop('SIGTERM');
-            server.close();
-        });
-    });
-} else {
-    // Development: polling mode
-    console.log('🤖 Bot is running in POLLING mode (dialog text + files + OCR + logging)...');
+                        let description = '';
+                        if (typeof payload.description === 'string' && payload.description.trim().length > 0) {
+                            description = payload.description.trim();
+                        } else if (typeof payload.request_text === 'string' && payload.request_text.trim().length > 0) {
+                            let body = '';
+                            req.on('data', chunk => body += chunk);
+                            req.on('end', async () => {
+                                try {
+                                    // Debug log: content-type and body
+                                    console.log("vf headers content-type:", req.headers["content-type"]);
+                                    console.log("vf body keys:", Object.keys(req.body || {}));
+                                    console.log("vf body raw:", req.body);
 
-    bot.launch();
+                                    // Empty body check
+                                    if (!req.body || Object.keys(req.body).length === 0) {
+                                        res.writeHead(400, { 'Content-Type': 'application/json' });
+                                        res.end(JSON.stringify({ ok: false, error: "Empty body. Check Content-Type application/json and JSON parser." }));
+                                        return;
+                                    }
 
-    process.once('SIGINT', () => bot.stop('SIGINT'));
-    process.once('SIGTERM', () => bot.stop('SIGTERM'));
-}
+                                    // Use req.body as main source
+                                    let b = req.body;
+
+                                    // Normalize and default fields
+                                    const title = (b.title ?? b.request_type ?? b.request_title ?? '').toString().trim();
+                                    const description = (b.description ?? b.request_text ?? b.text ?? '').toString().trim();
+                                    const safeTitle = title.length ? title : 'Без названия';
+                                    const safeDescription = description.length ? description : '—';
+                                    const author_tg_id = Number.isFinite(+b.author_tg_id) ? +b.author_tg_id : (Number.isFinite(+b.user_id) ? +b.user_id : null);
+                                    const author_username = (b.author_username ?? b.user_name ?? null);
+                                    const tags = Array.isArray(b.tags) ? b.tags : [];
+                                    const domain = typeof b.domain === 'string' ? b.domain : '';
+
+                                    // Log real values
+                                    console.log('VF SUBMIT:', { safeTitle, descriptionLength: safeDescription.length, author_tg_id });
+
+                                    // Validation
+                                    if (typeof safeTitle !== 'string' || safeTitle.length < 3) {
+                                        res.writeHead(400, { 'Content-Type': 'application/json' });
+                                        res.end(JSON.stringify({ ok: false, error: 'title must be a string with at least 3 characters' }));
+                                        return;
+                                    }
+                                    if (typeof safeDescription !== 'string' || safeDescription.length < 10) {
+                                        console.log('VF SUBMIT description too short, incoming fields:', b);
+                                        res.writeHead(400, { 'Content-Type': 'application/json' });
+                                        res.end(JSON.stringify({ ok: false, error: 'description must be a string with at least 10 characters' }));
+                                        return;
+                                    }
+                                    if (tags && (!Array.isArray(tags) || !tags.every(tag => typeof tag === 'string'))) {
+                                        res.writeHead(400, { 'Content-Type': 'application/json' });
+                                        res.end(JSON.stringify({ ok: false, error: 'tags must be an array of strings' }));
+                                        return;
+                                    }
+                                    if (author_tg_id && typeof author_tg_id !== 'number') {
+                                        res.writeHead(400, { 'Content-Type': 'application/json' });
+                                        res.end(JSON.stringify({ ok: false, error: 'author_tg_id must be a number' }));
+                                        return;
+                                    }
+                                    if (author_username && typeof author_username !== 'string') {
+                                        res.writeHead(400, { 'Content-Type': 'application/json' });
+                                        res.end(JSON.stringify({ ok: false, error: 'author_username must be a string' }));
+                                        return;
+                                    }
+
+                                    // Only insert normalized fields
+                                    const result = await publishRequestToChannel({
+                                        author_tg_id,
+                                        author_username,
+                                        title: safeTitle,
+                                        description: safeDescription,
+                                        tags,
+                                        domain,
+                                        status: 'published',
+                                    });
+
+                                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                                    res.end(JSON.stringify({
+                                        ok: true,
+                                        request_id: result.request_id,
+                                        channel_message_id: result.channel_message_id
+                                    }));
+                                } catch (err) {
+                                    console.error('❌ POST /vf/submit error:', err.message);
+                                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                                    res.end(JSON.stringify({
+                                        ok: false,
+                                        error: err.message,
+                                    }));
+                                }
