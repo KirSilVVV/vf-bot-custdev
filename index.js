@@ -725,6 +725,15 @@ if (process.env.NODE_ENV === 'production') {
                 });
                 return;
             }
+            // Handle GET / for health checks
+            if (req.method === 'GET' && req.url === '/') {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ ok: true, status: 'running' }));
+                return;
+            }
+            // Default 404 for other routes
+            res.writeHead(404, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: false, error: 'Not found' }));
             // ...existing code for any other routes or logic...
             // ...existing code for any other routes or logic...
             // ...existing code for any other routes or logic...
@@ -738,20 +747,35 @@ if (process.env.NODE_ENV === 'production') {
         });
         
         // Handle graceful shutdown
+        let shuttingDown = false;
         process.on('SIGINT', () => {
+            if (shuttingDown) return;
+            shuttingDown = true;
             console.log('SIGINT received, shutting down webhook server...');
             server.close(() => {
                 console.log('Server closed');
                 process.exit(0);
             });
+            // Force exit after 10 seconds
+            setTimeout(() => {
+                console.log('Forced shutdown after timeout');
+                process.exit(1);
+            }, 10000);
         });
         
         process.on('SIGTERM', () => {
+            if (shuttingDown) return;
+            shuttingDown = true;
             console.log('SIGTERM received, shutting down webhook server...');
             server.close(() => {
                 console.log('Server closed');
                 process.exit(0);
             });
+            // Force exit after 30 seconds
+            setTimeout(() => {
+                console.log('Forced shutdown after timeout');
+                process.exit(1);
+            }, 30000);
         });
     });
 } else {
