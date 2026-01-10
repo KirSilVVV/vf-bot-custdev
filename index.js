@@ -589,8 +589,20 @@ if (process.env.NODE_ENV === 'production') {
                                 }
                             });
                         }
+            // Handle OPTIONS /vf/submit (CORS preflight)
+            if (req.method === 'OPTIONS' && req.url === '/vf/submit') {
+                res.setHeader('Access-Control-Allow-Origin', '*');
+                res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+                res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-vf-secret');
+                res.writeHead(204);
+                res.end();
+                return;
+            }
             // Handle POST /vf/submit
             if (req.method === 'POST' && req.url === '/vf/submit') {
+                // Add CORS headers
+                res.setHeader('Access-Control-Allow-Origin', '*');
+                
                 let body = '';
                 req.on('data', chunk => body += chunk);
                 req.on('end', async () => {
