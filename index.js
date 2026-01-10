@@ -13,6 +13,7 @@
 import 'dotenv/config';
 import axios from 'axios';
 import { Telegraf } from 'telegraf';
+import { createClient } from '@supabase/supabase-js';
 
 import fs from 'fs/promises';
 import path from 'path';
@@ -45,6 +46,9 @@ if (!TELEGRAM_BOT_TOKEN || !VF_API_KEY || !VF_VERSION_ID || !SUPABASE_URL || !SU
 }
 
 const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
+
+// Initialize Supabase client
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const TMP_DIR = path.join(process.cwd(), 'tmp');
 const LOG_DIR = path.join(process.cwd(), 'logs');
@@ -96,6 +100,90 @@ async function logExtracted({ userId, kind, fileName, extracted }) {
         `--- END ---\n\n`;
 
     await fs.appendFile(logPath, body, 'utf-8');
+}
+
+async function publishRequestToChannel(requestData) {
+    /**
+     * Публикует запрос в Telegram канал и сохраняет информацию о сообщении в Supabase
+     * @param {Object} requestData - { user_id, user_name, request_text, request_type, metadata }
+     * @returns {Object} - { ok, request_id, channel_message_id, channel_chat_id }
+     */
+    try {
+        // 1) Create record in Supabase requests table
+        const { data: insertedRequest, error: insertError } = await supabase
+            .from('requests')
+            .insert({
+                user_id: requestData.user_id,
+                user_name: requestData.user_name || 'Anonymous',
+                request_text: requestData.request_text,
+                request_type: requestData.request_type || 'text',
+                metadata: requestData.metadata || {},
+                status: 'pending',
+                created_at: new Date().toISOString(),
+            })
+            .select()
+            .single();
+
+        if (insertError) {
+            console.error('❌ Supabase insert error:', insertError);
+            throw insertError;
+        }
+
+        const requestId = insertedRequest.id;
+        console.log(`✅ Created request in Supabase: ${requestId}`);
+
+        // 2) Publish message to Telegram channel
+        const messageText = `<b>🆕 Новый запрос</b>\n\n<b>ID:</b> ${requestId}\n<b>Тип:</b> ${requestData.request_type || 'text'}\n<b>От:</b> ${requestData.user_name || 'Anonymous'}\n\n<b>Текст:</b>\n${requestData.request_text}`;
+
+        const telegramResponse = await axios.post(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+            {
+                chat_id: TELEGRAM_CHANNEL_ID,
+                text: messageText,
+                parse_mode: 'HTML',
+            },
+            {
+                timeout: 10000,
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            }
+        );
+
+        if (!telegramResponse.data.ok) {
+            console.error('❌ Telegram API error:', telegramResponse.data);
+            throw new Error(`Telegram API error: ${telegramResponse.data.description}`);
+        }
+
+        const messageId = telegramResponse.data.result.message_id;
+        const chatId = telegramResponse.data.result.chat.id;
+
+        console.log(`✅ Published to Telegram: message_id=${messageId}, chat_id=${chatId}`);
+
+        // 3) Update request record with message info
+        const { error: updateError } = await supabase
+            .from('requests')
+            .update({
+                channel_message_id: messageId,
+                channel_chat_id: chatId,
+            })
+            .eq('id', requestId);
+
+        if (updateError) {
+            console.error('❌ Supabase update error:', updateError);
+            throw updateError;
+        }
+
+        return {
+            ok: true,
+            request_id: requestId,
+            channel_message_id: messageId,
+            channel_chat_id: chatId,
+        };
+    } catch (error) {
+        console.error('❌ Error publishing request:', error.message);
+        throw error;
+    }
 }
 
 async function downloadTelegramFile(fileUrl, filename) {
@@ -308,6 +396,42 @@ if (process.env.NODE_ENV === 'production') {
     // Use http module for explicit webhook handling
     import('http').then(({ createServer }) => {
         const server = createServer(async (req, res) => {
+            // Handle POST /vf/submit
+            if (req.method === 'POST' && req.url === '/vf/submit') {
+                let body = '';
+                req.on('data', chunk => body += chunk);
+                req.on('end', async () => {
+                    try {
+                        const payload = JSON.parse(body);
+                        
+                        console.log('📨 POST /vf/submit received:', {
+                            user_id: payload.user_id,
+                            request_type: payload.request_type,
+                            text_len: (payload.request_text || '').length,
+                        });
+
+                        const result = await publishRequestToChannel({
+                            user_id: payload.user_id || 'unknown',
+                            user_name: payload.user_name || 'Anonymous',
+                            request_text: payload.request_text || '',
+                            request_type: payload.request_type || 'text',
+                            metadata: payload.metadata || {},
+                        });
+
+                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify(result));
+                    } catch (err) {
+                        console.error('❌ POST /vf/submit error:', err.message);
+                        res.writeHead(500, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({
+                            ok: false,
+                            error: err.message,
+                        }));
+                    }
+                });
+                return;
+            }
+
             // Only handle POST requests
             if (req.method === 'POST') {
                 let body = '';

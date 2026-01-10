@@ -8,10 +8,17 @@
     "start": "node index.js",
     "dev": "node index.js"
   },
-  "keywords": ["telegram", "bot", "ocr", "voiceflow", "pdf"],
+  "keywords": [
+    "telegram",
+    "bot",
+    "ocr",
+    "voiceflow",
+    "pdf"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@supabase/supabase-js": "^2.90.1",
     "axios": "^0.27.2",
     "dotenv": "^17.2.3",
     "file-type": "^21.3.0",
