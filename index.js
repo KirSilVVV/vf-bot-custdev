@@ -5,6 +5,15 @@
 // Requirements (Node 18+ recommended; you have Node 24):
 //   npm i telegraf axios dotenv sharp tesseract.js pdf-parse mammoth file-type
 
+import fs from 'fs/promises';
+import path from 'path';
+import sharp from 'sharp';
+import Tesseract from 'tesseract.js';
+import * as pdfParse from 'pdf-parse';
+import mammoth from 'mammoth';
+import { fileTypeFromBuffer } from 'file-type';
+import axios from 'axios';
+import { Telegraf } from 'telegraf';
 import('http').then(({ createServer }) => {
     const server = createServer(async (req, res) => {
         // Handle Telegram webhook (POST /telegram/webhook or /webhook)
@@ -24,15 +33,6 @@ import('http').then(({ createServer }) => {
                             }
                         });
                     } // end main server handler
-
-
-import fs from 'fs/promises';
-import path from 'path';
-import sharp from 'sharp';
-import Tesseract from 'tesseract.js';
-import * as pdfParse from 'pdf-parse';
-import mammoth from 'mammoth';
-import { fileTypeFromBuffer } from 'file-type';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const VF_API_KEY = process.env.VOICEFLOW_API_KEY;
