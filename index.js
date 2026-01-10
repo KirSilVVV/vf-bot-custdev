@@ -659,6 +659,24 @@ if (process.env.NODE_ENV === 'production') {
                         }
             // Handle POST /vf/submit
             if (req.method === 'POST' && req.url === '/vf/submit') {
+                                                // Diagnostics
+                                                console.log("vf content-type:", req.headers["content-type"]);
+                                                console.log("vf body keys:", Object.keys(req.body || {}));
+
+                                                // Normalize input
+                                                const b = req.body ?? {};
+                                                const rawTitle = (b.title ?? b.request_type ?? b.request_title ?? "").toString().trim();
+                                                const rawDesc = (b.description ?? b.request_text ?? b.text ?? "").toString().trim();
+                                                const title = rawTitle.length ? rawTitle : "Без названия";
+                                                const description = rawDesc.length ? rawDesc : "—";
+                                                const author_tg_id = b.author_tg_id ?? b.user_id ?? null;
+                                                const author_username = b.author_username ?? b.user_name ?? null;
+                                                const tags = Array.isArray(b.tags) ? b.tags : [];
+                                                const domain = b.domain ?? null;
+                                                const status = "published";
+                                // Diagnostics
+                                console.log("vf content-type:", req.headers["content-type"]);
+                                console.log("vf body keys:", Object.keys(req.body || {}));
                 let body = '';
                 req.on('data', chunk => body += chunk);
                 req.on('end', async () => {
@@ -718,7 +736,7 @@ if (process.env.NODE_ENV === 'production') {
                                     const domain = typeof b.domain === 'string' ? b.domain : '';
 
                                     // Log real values
-                                    console.log('VF SUBMIT:', { safeTitle, descriptionLength: safeDescription.length, author_tg_id });
+                                console.log('VF SUBMIT received:', { title, descriptionLength: description.length, author_tg_id });
 
                                     // Validation
                                     if (typeof safeTitle !== 'string' || safeTitle.length < 3) {
@@ -749,15 +767,15 @@ if (process.env.NODE_ENV === 'production') {
                                     }
 
                                     // Only insert normalized fields
-                                    const result = await publishRequestToChannel({
-                                        author_tg_id,
-                                        author_username,
-                                        title: safeTitle,
-                                        description: safeDescription,
-                                        tags,
-                                        domain,
-                                        status: 'published',
-                                    });
+                            const result = await publishRequestToChannel({
+                                author_tg_id,
+                                author_username,
+                                title,
+                                description,
+                                tags,
+                                domain,
+                                status
+                            });
 
                                     res.writeHead(200, { 'Content-Type': 'application/json' });
                                     res.end(JSON.stringify({
