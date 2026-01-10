@@ -732,8 +732,8 @@ if (process.env.NODE_ENV === 'production') {
             // ...existing code for any other routes or logic...
         });
 
-        server.listen(PORT, () => {
-            console.log(`✅ Webhook server is listening on port ${PORT}`);
+        server.listen(PORT, '0.0.0.0', () => {
+            console.log(`✅ Webhook server is listening on 0.0.0.0:${PORT}`);
             console.log(`📊 Listening for Telegram updates on /${WEBHOOK_URL.split('/').pop()}/webhook`);
         });
         
