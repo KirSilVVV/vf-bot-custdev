@@ -425,113 +425,116 @@ bot.on('document', async (ctx) => {
 
 // Callback query handler (voting buttons)
 bot.on('callback_query', async (ctx) => {
+    const data = ctx.callbackQuery?.data || '';
+    const voterId = ctx.from.id;
+    
+    // 1) IMMEDIATELY ACK to prevent Telegram timeout/retry
+    try { 
+        await ctx.answerCbQuery('Принято'); 
+    } catch {}
+
+    // 2) Now do the logic - even if it fails, Telegram already got the response
     try {
-        const data = ctx.callbackQuery?.data || '';
-        const fromId = ctx.from.id;
-        let answerText = 'Обработано';
         let requestId = null;
+        let answerText = 'Обработано';
 
         if (typeof data === 'string' && data.startsWith('vote:')) {
             requestId = parseInt(data.slice(5), 10);
+            console.log('VOTE click:', { requestId, voterId, data });
+            
             if (!Number.isFinite(requestId)) {
-                answerText = 'Ошибка: заявка не найдена';
-            } else {
-                // Check if request exists
-                const { data: reqExists } = await supabase
-                    .from('requests')
-                    .select('id')
-                    .eq('id', requestId)
-                    .maybeSingle();
-                if (!reqExists) {
-                    answerText = 'Ошибка: заявка не найдена';
-                } else {
-                    // Check if already voted
-                    const { data: existingVote } = await supabase
-                        .from('votes')
-                        .select('request_id')
-                        .eq('request_id', requestId)
-                        .eq('voter_tg_id', fromId)
-                        .maybeSingle();
-                    if (existingVote) {
-                        answerText = 'Вы уже голосовали';
-                    } else {
-                        // Insert vote
-                        try {
-                            await supabase.from('votes').insert({ request_id: requestId, voter_tg_id: fromId }, { onConflict: ['request_id', 'voter_tg_id'] });
-                        } catch (e) {
-                            // ignore conflict
-                        }
-                        answerText = 'Голос учтён 👍';
-                    }
-                    // Count votes
-                    let voteCount = 0;
-                    try {
-                        const { data: countData } = await supabase
-                            .from('votes')
-                            .select('voter_tg_id', { count: 'exact', head: true })
-                            .eq('request_id', requestId);
-                        voteCount = countData?.length ?? 0;
-                    } catch (e) {
-                        console.error('Vote count error:', e);
-                    }
-                    // Update vote_count
-                    try {
-                        await supabase.from('requests').update({ vote_count: voteCount }).eq('id', requestId);
-                    } catch (e) {
-                        console.error('Update vote_count error:', e);
-                    }
-                }
+                console.log('VOTE invalid requestId:', requestId);
+                return;
             }
+            
+            // Check if request exists
+            const { data: reqExists } = await supabase
+                .from('requests')
+                .select('id')
+                .eq('id', requestId)
+                .maybeSingle();
+            
+            if (!reqExists) {
+                console.log('VOTE request not found:', requestId);
+                return;
+            }
+
+            // Try to insert vote - if unique constraint violation, user already voted
+            const { error: insErr, data: insData } = await supabase
+                .from('votes')
+                .insert({ request_id: requestId, voter_tg_id: voterId });
+            
+            const alreadyVoted = insErr?.code === '23505'; // unique constraint violation
+            console.log('VOTE insert result:', { insErr: insErr?.message, insData, alreadyVoted });
+
+            // Count votes
+            const { count } = await supabase
+                .from('votes')
+                .select('*', { count: 'exact', head: true })
+                .eq('request_id', requestId);
+            
+            console.log('VOTE count:', { requestId, count });
+
+            // Update vote_count in requests
+            const { error: updateErr } = await supabase
+                .from('requests')
+                .update({ vote_count: count })
+                .eq('id', requestId);
+            
+            if (updateErr) {
+                console.error('VOTE update count error:', updateErr);
+            }
+
         } else if (typeof data === 'string' && data.startsWith('unvote:')) {
             requestId = parseInt(data.slice(7), 10);
+            console.log('UNVOTE click:', { requestId, voterId, data });
+            
             if (!Number.isFinite(requestId)) {
-                answerText = 'Ошибка: заявка не найдена';
-            } else {
-                // Check if request exists
-                const { data: reqExists } = await supabase
-                    .from('requests')
-                    .select('id')
-                    .eq('id', requestId)
-                    .maybeSingle();
-                if (!reqExists) {
-                    answerText = 'Ошибка: заявка не найдена';
-                } else {
-                    // Remove vote
-                    try {
-                        await supabase.from('votes').delete().eq('request_id', requestId).eq('voter_tg_id', fromId);
-                    } catch (e) {
-                        console.error('Unvote error:', e);
-                    }
-                    answerText = 'Голос снят';
-                    // Count votes
-                    let voteCount = 0;
-                    try {
-                        const { data: countData } = await supabase
-                            .from('votes')
-                            .select('voter_tg_id', { count: 'exact', head: true })
-                            .eq('request_id', requestId);
-                        voteCount = countData?.length ?? 0;
-                    } catch (e) {
-                        console.error('Vote count error:', e);
-                    }
-                    // Update vote_count
-                    try {
-                        await supabase.from('requests').update({ vote_count: voteCount }).eq('id', requestId);
-                    } catch (e) {
-                        console.error('Update vote_count error:', e);
-                    }
-                }
+                console.log('UNVOTE invalid requestId:', requestId);
+                return;
+            }
+
+            // Check if request exists
+            const { data: reqExists } = await supabase
+                .from('requests')
+                .select('id')
+                .eq('id', requestId)
+                .maybeSingle();
+            
+            if (!reqExists) {
+                console.log('UNVOTE request not found:', requestId);
+                return;
+            }
+
+            // Remove vote
+            const { error: delErr } = await supabase
+                .from('votes')
+                .delete()
+                .eq('request_id', requestId)
+                .eq('voter_tg_id', voterId);
+            
+            console.log('UNVOTE delete result:', { delErr: delErr?.message });
+
+            // Count votes
+            const { count } = await supabase
+                .from('votes')
+                .select('*', { count: 'exact', head: true })
+                .eq('request_id', requestId);
+            
+            console.log('UNVOTE count:', { requestId, count });
+
+            // Update vote_count in requests
+            const { error: updateErr } = await supabase
+                .from('requests')
+                .update({ vote_count: count })
+                .eq('id', requestId);
+            
+            if (updateErr) {
+                console.error('UNVOTE update count error:', updateErr);
             }
         }
-        // Answer callback query
-        await ctx.answerCbQuery(answerText);
     } catch (err) {
         console.error('callback_query handler error:', err);
-        try {
-            await ctx.answerCbQuery('Ошибка');
-        } catch (e) {
-            // ignore
-        }
     }
 });
 
