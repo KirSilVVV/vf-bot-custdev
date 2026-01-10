@@ -4,16 +4,27 @@
 //
 // Requirements (Node 18+ recommended; you have Node 24):
 //   npm i telegraf axios dotenv sharp tesseract.js pdf-parse mammoth file-type
-//
-// .env:
-//   TELEGRAM_BOT_TOKEN=...
-//   VOICEFLOW_API_KEY=...
-//   VOICEFLOW_VERSION_ID=...
 
-import 'dotenv/config';
-import axios from 'axios';
-import { Telegraf } from 'telegraf';
-import { supabase } from './supabaseClient.js';
+import('http').then(({ createServer }) => {
+    const server = createServer(async (req, res) => {
+        // Handle Telegram webhook (POST /telegram/webhook or /webhook)
+        if (req.method === 'POST' && (req.url === '/telegram/webhook' || req.url === '/webhook')) {
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', async () => {
+                try {
+                                const update = JSON.parse(body);
+                                // Debug log
+                                console.log('TG WEBHOOK update:', JSON.stringify(update));
+                                // ... (rest of the code)
+                            } catch (err) {
+                                console.error('❌ Telegram webhook error:', err.message);
+                                res.writeHead(500, { 'Content-Type': 'application/json' });
+                                res.end(JSON.stringify({ ok: false, error: err.message }));
+                            }
+                        });
+                    } // end main server handler
+
 
 import fs from 'fs/promises';
 import path from 'path';
@@ -206,7 +217,6 @@ async function publishRequestToChannel(requestData) {
 
         console.log(`✅ Published to Telegram: message_id=${messageId}, chat_id=${chatId}`);
 
-
         // 3) Update request record with message info
         const { error: updateError } = await supabase
             .from('requests')
@@ -227,20 +237,10 @@ async function publishRequestToChannel(requestData) {
             channel_message_id: messageId,
             channel_chat_id: chatId,
         };
-    } catch (error) {
-        console.error('❌ Error publishing request:', error.message);
-        throw error;
+    } catch (err) {
+        console.error('❌ publishRequestToChannel error:', err.message);
+        throw err;
     }
-}
-
-async function downloadTelegramFile(fileUrl, filename) {
-    await ensureDir(TMP_DIR);
-    const filePath = path.join(TMP_DIR, filename);
-
-    const res = await axios.get(fileUrl, { responseType: 'arraybuffer', timeout: 30000 });
-    await fs.writeFile(filePath, res.data);
-
-    return filePath;
 }
 
 async function extractTextFromImageBuffer(buf) {
@@ -454,19 +454,19 @@ if (process.env.NODE_ENV === 'production') {
                                     console.log('TG WEBHOOK update:', JSON.stringify(update));
 
                                     if (update.callback_query) {
-                                        const data = update.callback_query.data;
-                                        const from_id = update.callback_query.from.id;
-                                        const callback_id = update.callback_query.id;
-                                        let answerText = 'Обработано';
-                                        let request_id = null;
                                         try {
+                                            const data = update.callback_query.data;
+                                            const from_id = update.callback_query.from.id;
+                                            const callback_id = update.callback_query.id;
+                                            const answerText = 'Обработано';
+                                            let request_id = null;
                                             if (typeof data === 'string' && data.startsWith('vote:')) {
                                                 request_id = parseInt(data.slice(5), 10);
                                                 if (!Number.isFinite(request_id)) {
                                                     answerText = 'Ошибка: заявка не найдена';
                                                 } else {
                                                     // Проверить, существует ли заявка
-                                                    const { data: reqExists, error: reqErr } = await supabase
+                                                    const { data: reqExists } = await supabase
                                                         .from('requests')
                                                         .select('id')
                                                         .eq('id', request_id)
@@ -633,161 +633,108 @@ if (process.env.NODE_ENV === 'production') {
                                         } catch (e) {
                                             console.error('answerCallbackQuery error:', e);
                                         }
-                                    }
-                                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                                    res.end(JSON.stringify({ ok: true }));
-                                        }
-                                        // Always answer callback query
-                                        await axios.post(
-                                            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-                                            {
-                                                callback_query_id: callback_id,
-                                                text: answerText,
-                                                show_alert: false
-                                            }
-                                        );
-                                    }
-                                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                                    res.end(JSON.stringify({ ok: true }));
-                                } catch (err) {
-                                    console.error('❌ Telegram webhook error:', err.message);
-                                    res.writeHead(500, { 'Content-Type': 'application/json' });
-                                    res.end(JSON.stringify({ ok: false, error: err.message }));
-                                }
-                            });
-                            return;
+                            res.writeHead(200, { 'Content-Type': 'application/json' });
+                            res.end(JSON.stringify({ ok: true }));
                         }
+                        return;
+                    } catch (err) {
+                        console.error('❌ Telegram webhook error:', err.message);
+                        res.writeHead(500, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ ok: false, error: err.message }));
+                    }
+                });
+            }
             // Handle POST /vf/submit
             if (req.method === 'POST' && req.url === '/vf/submit') {
-                                                // Diagnostics
-                                                console.log("vf content-type:", req.headers["content-type"]);
-                                                console.log("vf body keys:", Object.keys(req.body || {}));
-
-                                                // Normalize input
-                                                const b = req.body ?? {};
-                                                const rawTitle = (b.title ?? b.request_type ?? b.request_title ?? "").toString().trim();
-                                                const rawDesc = (b.description ?? b.request_text ?? b.text ?? "").toString().trim();
-                                                const title = rawTitle.length ? rawTitle : "Без названия";
-                                                const description = rawDesc.length ? rawDesc : "—";
-                                                const author_tg_id = b.author_tg_id ?? b.user_id ?? null;
-                                                const author_username = b.author_username ?? b.user_name ?? null;
-                                                const tags = Array.isArray(b.tags) ? b.tags : [];
-                                                const domain = b.domain ?? null;
-                                                const status = "published";
-                                // Diagnostics
-                                console.log("vf content-type:", req.headers["content-type"]);
-                                console.log("vf body keys:", Object.keys(req.body || {}));
                 let body = '';
                 req.on('data', chunk => body += chunk);
                 req.on('end', async () => {
                     try {
-                        // Debug log: content-type
+                        // Diagnostics
                         console.log('VF SUBMIT content-type:', req.headers['content-type']);
-
-                        // Try to parse JSON
+                        console.log('VF SUBMIT raw body:', body);
                         let payload = {};
                         try {
                             payload = JSON.parse(body);
                         } catch (e) {
                             console.log('VF SUBMIT body parse error:', e.message);
                         }
-
-                        // Debug log: body and keys
-                        console.log('VF SUBMIT raw body:', body);
                         console.log('VF SUBMIT body keys:', Object.keys(payload || {}));
 
+                        // Normalize and default fields
+                        const title = (payload.title ?? payload.request_type ?? payload.request_title ?? '').toString().trim();
+                        const description = (payload.description ?? payload.request_text ?? payload.text ?? '').toString().trim();
+                        const safeTitle = title.length ? title : 'Без названия';
+                        const safeDescription = description.length ? description : '—';
+                        const author_tg_id = Number.isFinite(+payload.author_tg_id) ? +payload.author_tg_id : (Number.isFinite(+payload.user_id) ? +payload.user_id : null);
+                        const author_username = (payload.author_username ?? payload.user_name ?? null);
+                        const tags = Array.isArray(payload.tags) ? payload.tags : [];
+                        const domain = typeof payload.domain === 'string' ? payload.domain : '';
+                        const status = 'published';
 
-                        // Strict mapping for normalized fields only
-                        const title = typeof payload.title === 'string' && payload.title.trim().length > 0
-                            ? payload.title.trim()
-                            : (typeof payload.request_type === 'string' && payload.request_type.trim().length > 0 ? payload.request_type.trim() : 'Без названия');
+                        // Log real values
+                        console.log('VF SUBMIT received:', { title: safeTitle, descriptionLength: safeDescription.length, author_tg_id });
 
-                        let description = '';
-                        if (typeof payload.description === 'string' && payload.description.trim().length > 0) {
-                            description = payload.description.trim();
-                        } else if (typeof payload.request_text === 'string' && payload.request_text.trim().length > 0) {
-                            let body = '';
-                            req.on('data', chunk => body += chunk);
-                            req.on('end', async () => {
-                                try {
-                                    // Debug log: content-type and body
-                                    console.log("vf headers content-type:", req.headers["content-type"]);
-                                    console.log("vf body keys:", Object.keys(req.body || {}));
-                                    console.log("vf body raw:", req.body);
+                        // Validation
+                        if (typeof safeTitle !== 'string' || safeTitle.length < 3) {
+                            res.writeHead(400, { 'Content-Type': 'application/json' });
+                            res.end(JSON.stringify({ ok: false, error: 'title must be a string with at least 3 characters' }));
+                            return;
+                        }
+                        if (typeof safeDescription !== 'string' || safeDescription.length < 10) {
+                            console.log('VF SUBMIT description too short, incoming fields:', payload);
+                            res.writeHead(400, { 'Content-Type': 'application/json' });
+                            res.end(JSON.stringify({ ok: false, error: 'description must be a string with at least 10 characters' }));
+                            return;
+                        }
+                        if (tags && (!Array.isArray(tags) || !tags.every(tag => typeof tag === 'string'))) {
+                            res.writeHead(400, { 'Content-Type': 'application/json' });
+                            res.end(JSON.stringify({ ok: false, error: 'tags must be an array of strings' }));
+                            return;
+                        }
+                        if (author_tg_id && typeof author_tg_id !== 'number') {
+                            res.writeHead(400, { 'Content-Type': 'application/json' });
+                            res.end(JSON.stringify({ ok: false, error: 'author_tg_id must be a number' }));
+                            return;
+                        }
+                        if (author_username && typeof author_username !== 'string') {
+                            res.writeHead(400, { 'Content-Type': 'application/json' });
+                            res.end(JSON.stringify({ ok: false, error: 'author_username must be a string' }));
+                            return;
+                        }
 
-                                    // Empty body check
-                                    if (!req.body || Object.keys(req.body).length === 0) {
-                                        res.writeHead(400, { 'Content-Type': 'application/json' });
-                                        res.end(JSON.stringify({ ok: false, error: "Empty body. Check Content-Type application/json and JSON parser." }));
-                                        return;
-                                    }
+                        // Only insert normalized fields
+                        const result = await publishRequestToChannel({
+                            author_tg_id,
+                            author_username,
+                            title: safeTitle,
+                            description: safeDescription,
+                            tags,
+                            domain,
+                            status
+                        });
 
-                                    // Use req.body as main source
-                                    let b = req.body;
-
-                                    // Normalize and default fields
-                                    const title = (b.title ?? b.request_type ?? b.request_title ?? '').toString().trim();
-                                    const description = (b.description ?? b.request_text ?? b.text ?? '').toString().trim();
-                                    const safeTitle = title.length ? title : 'Без названия';
-                                    const safeDescription = description.length ? description : '—';
-                                    const author_tg_id = Number.isFinite(+b.author_tg_id) ? +b.author_tg_id : (Number.isFinite(+b.user_id) ? +b.user_id : null);
-                                    const author_username = (b.author_username ?? b.user_name ?? null);
-                                    const tags = Array.isArray(b.tags) ? b.tags : [];
-                                    const domain = typeof b.domain === 'string' ? b.domain : '';
-
-                                    // Log real values
-                                console.log('VF SUBMIT received:', { title, descriptionLength: description.length, author_tg_id });
-
-                                    // Validation
-                                    if (typeof safeTitle !== 'string' || safeTitle.length < 3) {
-                                        res.writeHead(400, { 'Content-Type': 'application/json' });
-                                        res.end(JSON.stringify({ ok: false, error: 'title must be a string with at least 3 characters' }));
-                                        return;
-                                    }
-                                    if (typeof safeDescription !== 'string' || safeDescription.length < 10) {
-                                        console.log('VF SUBMIT description too short, incoming fields:', b);
-                                        res.writeHead(400, { 'Content-Type': 'application/json' });
-                                        res.end(JSON.stringify({ ok: false, error: 'description must be a string with at least 10 characters' }));
-                                        return;
-                                    }
-                                    if (tags && (!Array.isArray(tags) || !tags.every(tag => typeof tag === 'string'))) {
-                                        res.writeHead(400, { 'Content-Type': 'application/json' });
-                                        res.end(JSON.stringify({ ok: false, error: 'tags must be an array of strings' }));
-                                        return;
-                                    }
-                                    if (author_tg_id && typeof author_tg_id !== 'number') {
-                                        res.writeHead(400, { 'Content-Type': 'application/json' });
-                                        res.end(JSON.stringify({ ok: false, error: 'author_tg_id must be a number' }));
-                                        return;
-                                    }
-                                    if (author_username && typeof author_username !== 'string') {
-                                        res.writeHead(400, { 'Content-Type': 'application/json' });
-                                        res.end(JSON.stringify({ ok: false, error: 'author_username must be a string' }));
-                                        return;
-                                    }
-
-                                    // Only insert normalized fields
-                            const result = await publishRequestToChannel({
-                                author_tg_id,
-                                author_username,
-                                title,
-                                description,
-                                tags,
-                                domain,
-                                status
-                            });
-
-                                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                                    res.end(JSON.stringify({
-                                        ok: true,
-                                        request_id: result.request_id,
-                                        channel_message_id: result.channel_message_id
-                                    }));
-                                } catch (err) {
-                                    console.error('❌ POST /vf/submit error:', err.message);
-                                    res.writeHead(400, { 'Content-Type': 'application/json' });
-                                    res.end(JSON.stringify({
-                                        ok: false,
-                                        error: err.message,
-                                    }));
-                                }
+                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({
+                            ok: true,
+                            request_id: result.request_id,
+                            channel_message_id: result.channel_message_id
+                        }));
+                    } catch (err) {
+                        console.error('❌ POST /vf/submit error:', err.message);
+                        res.writeHead(500, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({
+                            ok: false,
+                            error: err.message,
+                        }));
+                    }
+                });
+                return;
+            }
+            // ...existing code for any other routes or logic...
+            // ...existing code for any other routes or logic...
+            // ...existing code for any other routes or logic...
+            // ...existing code for any other routes or logic...
+            // ...existing code for any other routes or logic...
+    }); // end createServer AND async handler
+}); // end import('http').then
