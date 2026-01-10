@@ -459,12 +459,11 @@ if (process.env.NODE_ENV === 'production') {
                                     }
 
                                     if (update.callback_query) {
+                                        let data, from_id, callback_id, answerText = 'Обработано', request_id = null;
                                         try {
-                                            const data = update.callback_query.data;
-                                            const from_id = update.callback_query.from.id;
-                                            const callback_id = update.callback_query.id;
-                                            let answerText = 'Обработано';
-                                            let request_id = null;
+                                            data = update.callback_query.data;
+                                            from_id = update.callback_query.from.id;
+                                            callback_id = update.callback_query.id;
                                             if (typeof data === 'string' && data.startsWith('vote:')) {
                                                 request_id = parseInt(data.slice(5), 10);
                                                 if (!Number.isFinite(request_id)) {
@@ -638,17 +637,16 @@ if (process.env.NODE_ENV === 'production') {
                                         } catch (e) {
                                             console.error('answerCallbackQuery error:', e);
                                         }
-                            res.writeHead(200, { 'Content-Type': 'application/json' });
-                            res.end(JSON.stringify({ ok: true }));
+                                    }
+                                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                                    res.end(JSON.stringify({ ok: true }));
+                                } catch (err) {
+                                    console.error('❌ Telegram webhook error:', err.message);
+                                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                                    res.end(JSON.stringify({ ok: false, error: err.message }));
+                                }
+                            });
                         }
-                        return;
-                    } catch (err) {
-                        console.error('❌ Telegram webhook error:', err.message);
-                        res.writeHead(500, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify({ ok: false, error: err.message }));
-                    }
-                });
-            }
             // Handle POST /vf/submit
             if (req.method === 'POST' && req.url === '/vf/submit') {
                 let body = '';
