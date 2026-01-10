@@ -423,6 +423,118 @@ bot.on('document', async (ctx) => {
     }
 });
 
+// Callback query handler (voting buttons)
+bot.on('callback_query', async (ctx) => {
+    try {
+        const data = ctx.callbackQuery?.data || '';
+        const fromId = ctx.from.id;
+        let answerText = 'Обработано';
+        let requestId = null;
+
+        if (typeof data === 'string' && data.startsWith('vote:')) {
+            requestId = parseInt(data.slice(5), 10);
+            if (!Number.isFinite(requestId)) {
+                answerText = 'Ошибка: заявка не найдена';
+            } else {
+                // Check if request exists
+                const { data: reqExists } = await supabase
+                    .from('requests')
+                    .select('id')
+                    .eq('id', requestId)
+                    .maybeSingle();
+                if (!reqExists) {
+                    answerText = 'Ошибка: заявка не найдена';
+                } else {
+                    // Check if already voted
+                    const { data: existingVote } = await supabase
+                        .from('votes')
+                        .select('request_id')
+                        .eq('request_id', requestId)
+                        .eq('voter_tg_id', fromId)
+                        .maybeSingle();
+                    if (existingVote) {
+                        answerText = 'Вы уже голосовали';
+                    } else {
+                        // Insert vote
+                        try {
+                            await supabase.from('votes').insert({ request_id: requestId, voter_tg_id: fromId }, { onConflict: ['request_id', 'voter_tg_id'] });
+                        } catch (e) {
+                            // ignore conflict
+                        }
+                        answerText = 'Голос учтён 👍';
+                    }
+                    // Count votes
+                    let voteCount = 0;
+                    try {
+                        const { data: countData } = await supabase
+                            .from('votes')
+                            .select('voter_tg_id', { count: 'exact', head: true })
+                            .eq('request_id', requestId);
+                        voteCount = countData?.length ?? 0;
+                    } catch (e) {
+                        console.error('Vote count error:', e);
+                    }
+                    // Update vote_count
+                    try {
+                        await supabase.from('requests').update({ vote_count: voteCount }).eq('id', requestId);
+                    } catch (e) {
+                        console.error('Update vote_count error:', e);
+                    }
+                }
+            }
+        } else if (typeof data === 'string' && data.startsWith('unvote:')) {
+            requestId = parseInt(data.slice(7), 10);
+            if (!Number.isFinite(requestId)) {
+                answerText = 'Ошибка: заявка не найдена';
+            } else {
+                // Check if request exists
+                const { data: reqExists } = await supabase
+                    .from('requests')
+                    .select('id')
+                    .eq('id', requestId)
+                    .maybeSingle();
+                if (!reqExists) {
+                    answerText = 'Ошибка: заявка не найдена';
+                } else {
+                    // Remove vote
+                    try {
+                        await supabase.from('votes').delete().eq('request_id', requestId).eq('voter_tg_id', fromId);
+                    } catch (e) {
+                        console.error('Unvote error:', e);
+                    }
+                    answerText = 'Голос снят';
+                    // Count votes
+                    let voteCount = 0;
+                    try {
+                        const { data: countData } = await supabase
+                            .from('votes')
+                            .select('voter_tg_id', { count: 'exact', head: true })
+                            .eq('request_id', requestId);
+                        voteCount = countData?.length ?? 0;
+                    } catch (e) {
+                        console.error('Vote count error:', e);
+                    }
+                    // Update vote_count
+                    try {
+                        await supabase.from('requests').update({ vote_count: voteCount }).eq('id', requestId);
+                    } catch (e) {
+                        console.error('Update vote_count error:', e);
+                    }
+                }
+            }
+        }
+        // Answer callback query
+        await ctx.answerCbQuery(answerText);
+    } catch (err) {
+        console.error('callback_query handler error:', err);
+        try {
+            await ctx.answerCbQuery('Ошибка');
+        } catch (e) {
+            // ignore
+        }
+    }
+});
+
 /* -------------------- start -------------------- */
 
 const PORT = process.env.PORT || 3000;
@@ -457,198 +569,17 @@ if (process.env.NODE_ENV === 'production') {
                                         console.log(`   from.id: ${update.callback_query.from.id}`);
                                         console.log(`   message.message_id: ${update.callback_query.message?.message_id}`);
                                     }
-
-                                    // Handle callback_query updates manually
-                                    if (update.callback_query) {
-                                        const callbackId = update.callback_query.id;
-                                        let data = '', from_id = null, answerText = 'Обработано', request_id = null;
-                                        try {
-                                            data = update.callback_query.data;
-                                            from_id = update.callback_query.from.id;
-                                            if (typeof data === 'string' && data.startsWith('vote:')) {
-                                                request_id = parseInt(data.slice(5), 10);
-                                                if (!Number.isFinite(request_id)) {
-                                                    answerText = 'Ошибка: заявка не найдена';
-                                                } else {
-                                                    // Проверить, существует ли заявка
-                                                    const { data: reqExists } = await supabase
-                                                        .from('requests')
-                                                        .select('id')
-                                                        .eq('id', request_id)
-                                                        .maybeSingle();
-                                                    if (!reqExists) {
-                                                        answerText = 'Ошибка: заявка не найдена';
-                                                    } else {
-                                                        // Проверить, был ли уже голос
-                                                        const { data: existingVote } = await supabase
-                                                            .from('votes')
-                                                            .select('request_id')
-                                                            .eq('request_id', request_id)
-                                                            .eq('voter_tg_id', from_id)
-                                                            .maybeSingle();
-                                                        if (existingVote) {
-                                                            answerText = 'Вы уже голосовали';
-                                                        } else {
-                                                            // Голосование: upsert голос
-                                                            try {
-                                                                await supabase.from('votes').insert({ request_id, voter_tg_id: from_id }, { onConflict: ['request_id', 'voter_tg_id'] });
-                                                            } catch (e) {
-                                                                // ignore conflict
-                                                            }
-                                                            answerText = 'Голос учтён 👍';
-                                                        }
-                                                        // Посчитать голоса
-                                                        let voteCount = 0;
-                                                        try {
-                                                            const { data: countData } = await supabase
-                                                                .from('votes')
-                                                                .select('voter_tg_id', { count: 'exact', head: true })
-                                                                .eq('request_id', request_id);
-                                                            voteCount = countData?.length ?? 0;
-                                                        } catch (e) {
-                                                            console.error('Vote count error:', e);
-                                                        }
-                                                        // Обновить requests.vote_count
-                                                        try {
-                                                            await supabase.from('requests').update({ vote_count: voteCount }).eq('id', request_id);
-                                                        } catch (e) {
-                                                            console.error('Update vote_count error:', e);
-                                                        }
-                                                        // Получить chat_id и message_id
-                                                        try {
-                                                            const { data: reqRow } = await supabase
-                                                                .from('requests')
-                                                                .select('channel_chat_id, channel_message_id')
-                                                                .eq('id', request_id)
-                                                                .single();
-                                                            if (reqRow && reqRow.channel_chat_id && reqRow.channel_message_id) {
-                                                                // Обновить inline-клавиатуру
-                                                                try {
-                                                                    await axios.post(
-                                                                        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`,
-                                                                        {
-                                                                            chat_id: reqRow.channel_chat_id,
-                                                                            message_id: reqRow.channel_message_id,
-                                                                            reply_markup: {
-                                                                                inline_keyboard: [
-                                                                                    [
-                                                                                        { text: `👍 Голосовать (${voteCount})`, callback_data: `vote:${request_id}` },
-                                                                                        { text: `🗳 Снять голос`, callback_data: `unvote:${request_id}` }
-                                                                                    ]
-                                                                                ]
-                                                                            }
-                                                                        }
-                                                                    );
-                                                                } catch (e) {
-                                                                    console.error('editMessageReplyMarkup error:', e);
-                                                                }
-                                                            }
-                                                        } catch (e) {
-                                                            console.error('Get channel info error:', e);
-                                                        }
-                                                    }
-                                                }
-                                            } else if (typeof data === 'string' && data.startsWith('unvote:')) {
-                                                request_id = parseInt(data.slice(7), 10);
-                                                if (!Number.isFinite(request_id)) {
-                                                    answerText = 'Ошибка: заявка не найдена';
-                                                } else {
-                                                    // Проверить, существует ли заявка
-                                                    const { data: reqExists, error: reqErr } = await supabase
-                                                        .from('requests')
-                                                        .select('id')
-                                                        .eq('id', request_id)
-                                                        .maybeSingle();
-                                                    if (!reqExists) {
-                                                        answerText = 'Ошибка: заявка не найдена';
-                                                    } else {
-                                                        // Удалить голос (идемпотентно)
-                                                        try {
-                                                            await supabase.from('votes').delete().eq('request_id', request_id).eq('voter_tg_id', from_id);
-                                                        } catch (e) {
-                                                            console.error('Unvote error:', e);
-                                                        }
-                                                        answerText = 'Голос снят';
-                                                        // Посчитать голоса
-                                                        let voteCount = 0;
-                                                        try {
-                                                            const { data: countData } = await supabase
-                                                                .from('votes')
-                                                                .select('voter_tg_id', { count: 'exact', head: true })
-                                                                .eq('request_id', request_id);
-                                                            voteCount = countData?.length ?? 0;
-                                                        } catch (e) {
-                                                            console.error('Vote count error:', e);
-                                                        }
-                                                        // Обновить requests.vote_count
-                                                        try {
-                                                            await supabase.from('requests').update({ vote_count: voteCount }).eq('id', request_id);
-                                                        } catch (e) {
-                                                            console.error('Update vote_count error:', e);
-                                                        }
-                                                        // Получить chat_id и message_id
-                                                        try {
-                                                            const { data: reqRow } = await supabase
-                                                                .from('requests')
-                                                                .select('channel_chat_id, channel_message_id')
-                                                                .eq('id', request_id)
-                                                                .single();
-                                                            if (reqRow && reqRow.channel_chat_id && reqRow.channel_message_id) {
-                                                                // Обновить inline-клавиатуру
-                                                                try {
-                                                                    await axios.post(
-                                                                        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`,
-                                                                        {
-                                                                            chat_id: reqRow.channel_chat_id,
-                                                                            message_id: reqRow.channel_message_id,
-                                                                            reply_markup: {
-                                                                                inline_keyboard: [
-                                                                                    [
-                                                                                        { text: `👍 Голосовать (${voteCount})`, callback_data: `vote:${request_id}` },
-                                                                                        { text: `🗳 Снять голос`, callback_data: `unvote:${request_id}` }
-                                                                                    ]
-                                                                                ]
-                                                                            }
-                                                                        }
-                                                                    );
-                                                                } catch (e) {
-                                                                    console.error('editMessageReplyMarkup error:', e);
-                                                                }
-                                                            }
-                                                        } catch (e) {
-                                                            console.error('Get channel info error:', e);
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        } catch (errVote) {
-                                            console.error('Vote/unvote handler error:', errVote);
-                                            answerText = 'Ошибка обработки голосования';
-                                        }
-                                        // Always answer callback query using Telegram API directly
-                                        try {
-                                            await axios.post(
-                                                `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-                                                {
-                                                    callback_query_id: callbackId,
-                                                    text: answerText,
-                                                    show_alert: false
-                                                }
-                                            );
-                                        } catch (e) {
-                                            console.error('answerCallbackQuery error:', e);
-                                        }
-                                    } else {
-                                        // Handle other updates (message, etc.) through bot.handleUpdate
-                                        // Don't pass res to avoid duplicate responses
-                                        try {
-                                            await bot.handleUpdate(update);
-                                        } catch (e) {
-                                            console.error('bot.handleUpdate error:', e);
-                                        }
+                                    // Handle all updates through bot.handleUpdate
+                                    try {
+                                        await bot.handleUpdate(update);
+                                    } catch (e) {
+                                        console.error('bot.handleUpdate error:', e);
                                     }
-                                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                                    res.end(JSON.stringify({ ok: true }));
+                                    // Always respond with 200, exactly once
+                                    if (!res.headersSent) {
+                                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                                        res.end(JSON.stringify({ ok: true }));
+                                    }
                                 } catch (err) {
                                     console.error('❌ Telegram webhook error:', err.message);
                                     if (!res.headersSent) {
