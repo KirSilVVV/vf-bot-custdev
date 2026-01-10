@@ -30,19 +30,36 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const TELEGRAM_CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID;
 
-if (!TELEGRAM_BOT_TOKEN || !VF_API_KEY || !VF_VERSION_ID || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !TELEGRAM_CHANNEL_ID) {
-    const missing = [];
-    if (!TELEGRAM_BOT_TOKEN) missing.push('TELEGRAM_BOT_TOKEN');
-    if (!VF_API_KEY) missing.push('VOICEFLOW_API_KEY');
-    if (!VF_VERSION_ID) missing.push('VOICEFLOW_VERSION_ID');
-    if (!SUPABASE_URL) missing.push('SUPABASE_URL');
-    if (!SUPABASE_SERVICE_ROLE_KEY) missing.push('SUPABASE_SERVICE_ROLE_KEY');
-    if (!TELEGRAM_CHANNEL_ID) missing.push('TELEGRAM_CHANNEL_ID');
-    
+// Validate required environment variables
+const requiredEnv = {
+    TELEGRAM_BOT_TOKEN,
+    SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY,
+    TELEGRAM_CHANNEL_ID,
+};
+
+const missing = Object.entries(requiredEnv)
+    .filter(([_, value]) => !value)
+    .map(([key]) => key);
+
+if (missing.length > 0) {
     console.error('❌ Missing required environment variables:');
     missing.forEach(v => console.error(`   - ${v}`));
     console.error('\n📝 Please set these variables in your .env file or Render dashboard');
+    console.error('\n📋 Required variables for this release:');
+    console.error('   • TELEGRAM_BOT_TOKEN (Telegram bot token from BotFather)');
+    console.error('   • SUPABASE_URL (Supabase project URL)');
+    console.error('   • SUPABASE_SERVICE_ROLE_KEY (Supabase service role key)');
+    console.error('   • TELEGRAM_CHANNEL_ID (Target Telegram channel ID, format: -100...)');
     process.exit(1);
+}
+
+// Validate Voiceflow variables (needed for bot dialog functionality)
+if (!VF_API_KEY || !VF_VERSION_ID) {
+    console.error('⚠️  Warning: Voiceflow variables not fully configured');
+    if (!VF_API_KEY) console.error('   - VOICEFLOW_API_KEY is missing');
+    if (!VF_VERSION_ID) console.error('   - VOICEFLOW_VERSION_ID is missing');
+    console.error('\n   Bot dialog functionality will not work, but /vf/submit endpoint will still be available');
 }
 
 const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
