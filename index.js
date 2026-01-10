@@ -459,11 +459,11 @@ if (process.env.NODE_ENV === 'production') {
                                     }
 
                                     if (update.callback_query) {
-                                        let data = '', from_id = null, callback_id = null, answerText = 'Обработано', request_id = null;
+                                        const callbackId = update.callback_query.id;
+                                        let data = '', from_id = null, answerText = 'Обработано', request_id = null;
                                         try {
                                             data = update.callback_query.data;
                                             from_id = update.callback_query.from.id;
-                                            callback_id = update.callback_query.id;
                                             if (typeof data === 'string' && data.startsWith('vote:')) {
                                                 request_id = parseInt(data.slice(5), 10);
                                                 if (!Number.isFinite(request_id)) {
@@ -626,14 +626,10 @@ if (process.env.NODE_ENV === 'production') {
                                         }
                                         // Always answer callback query
                                         try {
-                                            await axios.post(
-                                                `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-                                                {
-                                                    callback_query_id: callback_id,
-                                                    text: answerText,
-                                                    show_alert: false
-                                                }
-                                            );
+                                            await bot.telegram.answerCallbackQuery(callbackId, { 
+                                                text: answerText, 
+                                                show_alert: false 
+                                            });
                                         } catch (e) {
                                             console.error('answerCallbackQuery error:', e);
                                         }
@@ -642,8 +638,10 @@ if (process.env.NODE_ENV === 'production') {
                                     res.end(JSON.stringify({ ok: true }));
                                 } catch (err) {
                                     console.error('❌ Telegram webhook error:', err.message);
-                                    res.writeHead(500, { 'Content-Type': 'application/json' });
-                                    res.end(JSON.stringify({ ok: false, error: err.message }));
+                                    if (!res.headersSent) {
+                                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                                        res.end(JSON.stringify({ ok: true }));
+                                    }
                                 }
                             });
                         }
