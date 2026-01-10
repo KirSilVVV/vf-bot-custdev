@@ -90,7 +90,6 @@ function sanitizeFilename(name) {
 }
 
 // Initialize Supabase
-import { createClient } from '@supabase/supabase-js';
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 // Download Telegram file
