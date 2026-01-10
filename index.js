@@ -458,6 +458,7 @@ if (process.env.NODE_ENV === 'production') {
                                         console.log(`   message.message_id: ${update.callback_query.message?.message_id}`);
                                     }
 
+                                    // Handle callback_query updates manually
                                     if (update.callback_query) {
                                         const callbackId = update.callback_query.id;
                                         let data = '', from_id = null, answerText = 'Обработано', request_id = null;
@@ -632,6 +633,13 @@ if (process.env.NODE_ENV === 'production') {
                                             });
                                         } catch (e) {
                                             console.error('answerCallbackQuery error:', e);
+                                        }
+                                    } else {
+                                        // Handle other updates (message, etc.) through bot.handleUpdate
+                                        try {
+                                            await bot.handleUpdate(update);
+                                        } catch (e) {
+                                            console.error('bot.handleUpdate error:', e);
                                         }
                                     }
                                     res.writeHead(200, { 'Content-Type': 'application/json' });
