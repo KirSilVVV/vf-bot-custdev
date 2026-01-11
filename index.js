@@ -402,7 +402,7 @@ bot.on('text', async (ctx) => {
                         provider_token: '', // Empty for Telegram Stars
                         currency: 'XTR',
                         prices: [
-                            { label: 'Клинический приоритет', amount: 300 }
+                            { label: 'Клинический приоритет', amount: 1 }
                         ]
                     }
                 );
@@ -540,7 +540,7 @@ bot.on('pre_checkout_query', async (ctx) => {
         // Validate: must be clinical_priority kind and amount must be 300 XTR
         const isValid = 
             payload.kind === 'clinical_priority' &&
-            preCheckoutQuery.total_amount === 300 &&
+            preCheckoutQuery.total_amount === 1 &&
             preCheckoutQuery.currency === 'XTR';
         
         if (!isValid) {
