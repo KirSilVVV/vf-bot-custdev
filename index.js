@@ -93,6 +93,21 @@ function sanitizeFilename(name) {
 // Initialize Supabase
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+// Rate-limit for clinical priority payments (userId + featureId -> timestamp of last invoice)
+// Prevent duplicate invoices: one per feature_id per user per 60 sec
+const clinicalPriorityInvoiceCache = new Map();
+
+function canIssueClinicalPriorityInvoice(userId, featureId) {
+    const key = `${userId}:${featureId}`;
+    const now = Date.now();
+    const lastTime = clinicalPriorityInvoiceCache.get(key) || 0;
+    if (now - lastTime < 60000) {
+        return false; // Too soon
+    }
+    clinicalPriorityInvoiceCache.set(key, now);
+    return true;
+}
+
 // Download Telegram file
 async function downloadTelegramFile(fileUrl, fileName) {
     await ensureDir(TMP_DIR);
@@ -313,18 +328,94 @@ async function sendToVoiceflowAsUserTurn(userId, extractedText) {
     return await voiceflowInteract(userId, extractedText);
 }
 
+async function voiceflowEvent(userId, eventName, eventData = {}) {
+    // Send custom event to Voiceflow (e.g. clinical_priority_paid)
+    const url = `https://general-runtime.voiceflow.com/state/${VF_VERSION_ID}/user/${userId}/interact`;
+    try {
+        const res = await axios.post(
+            url,
+            { 
+                request: { 
+                    type: 'event',
+                    payload: { name: eventName, data: eventData }
+                } 
+            },
+            {
+                headers: {
+                    Authorization: VF_API_KEY,
+                    'Content-Type': 'application/json',
+                },
+                timeout: 20000,
+            }
+        );
+        console.log(`✅ voiceflowEvent sent: ${eventName} for user ${userId}`, eventData);
+        return res.data;
+    } catch (err) {
+        console.error(`❌ voiceflowEvent failed: ${eventName}`, err?.response?.data || err.message);
+        throw err;
+    }
+}
+
 bot.start(async (ctx) => {
     await ctx.reply(
         'Привет! Я бот второго поколения, готовящий продукты на базе ИИ через crowdsource в медицине Российской Федерации. Напиши сообщение — я задам вопросы, подготовлю описание продукта и когда он появится на рынке, ты получишь 25% от доходов с него. Продукт регистрируется за тобой и реализуется командой разработчиков на базе Claude AI от Anthropic.'
     );
 });
 
-// Text messages: log + send to Voiceflow
+// Text messages: check for CLINICAL_PRIORITY trigger OR send to Voiceflow
 bot.on('text', async (ctx) => {
     const userId = String(ctx.from.id);
     const text = ctx.message.text;
 
     try {
+        // Check if text starts with CLINICAL_PRIORITY|<feature_id>
+        if (typeof text === 'string' && text.startsWith('CLINICAL_PRIORITY|')) {
+            const featureId = text.slice('CLINICAL_PRIORITY|'.length).trim();
+            
+            if (!featureId) {
+                return ctx.reply('❌ Некорректный формат. Используй: CLINICAL_PRIORITY|feature_id');
+            }
+
+            // Rate-limit check
+            if (!canIssueClinicalPriorityInvoice(userId, featureId)) {
+                return ctx.reply('⏳ Вы уже создали счёт на эту идею менее 60 секунд назад. Попробуйте позже.');
+            }
+
+            // Create invoice payload
+            const payload = {
+                kind: 'clinical_priority',
+                feature_id: featureId,
+                user_id: userId,
+                ts: Math.floor(Date.now() / 1000)
+            };
+            const payloadStr = JSON.stringify(payload);
+
+            console.log('💊 CLINICAL_PRIORITY trigger detected:', { userId, featureId, payload });
+
+            // Send invoice
+            try {
+                await ctx.sendInvoice(
+                    {
+                        title: '🧬 Клинический приоритет',
+                        description: 'Отметить идею как клинически значимую для ускорения экспертного рассмотрения (не гарантирует релиз).',
+                        payload: payloadStr,
+                        provider_token: '', // Empty for Telegram Stars
+                        currency: 'XTR',
+                        prices: [
+                            { label: 'Клинический приоритет', amount: 300 }
+                        ]
+                    }
+                );
+                await ctx.reply('Открыл оплату ⭐️. После оплаты я подтвержу статус.');
+                console.log('✅ Invoice sent successfully');
+            } catch (invErr) {
+                console.error('❌ Invoice send error:', invErr.message);
+                await ctx.reply('❌ Не удалось открыть оплату. Попробуйте позже.');
+            }
+            return;
+        }
+
+        // Normal text message -> send to Voiceflow
         await logExtracted({ userId, kind: 'text', fileName: '-', extracted: text });
         await ctx.sendChatAction('typing');
         const reply = await voiceflowInteract(userId, text);
@@ -421,6 +512,152 @@ bot.on('document', async (ctx) => {
         await ctx.reply(
             'Не получилось обработать файл. Лучше всего подходят PDF (текстовый) или DOCX. Для сканов — фото/скриншоты.'
         );
+    }
+});
+
+// Pre-checkout query handler (validate Telegram Stars payment)
+bot.on('pre_checkout_query', async (ctx) => {
+    try {
+        const preCheckoutQuery = ctx.preCheckoutQuery;
+        console.log('💳 pre_checkout_query received:', {
+            id: preCheckoutQuery.id,
+            from_id: preCheckoutQuery.from.id,
+            currency: preCheckoutQuery.currency,
+            total_amount: preCheckoutQuery.total_amount,
+            invoice_payload: preCheckoutQuery.invoice_payload
+        });
+
+        // Parse and validate payload
+        let payload = {};
+        try {
+            payload = JSON.parse(preCheckoutQuery.invoice_payload);
+        } catch (e) {
+            console.error('❌ Failed to parse invoice_payload:', e.message);
+            await ctx.answerPreCheckoutQuery(false, 'Ошибка в структуре платежа');
+            return;
+        }
+
+        // Validate: must be clinical_priority kind and amount must be 300 XTR
+        const isValid = 
+            payload.kind === 'clinical_priority' &&
+            preCheckoutQuery.total_amount === 300 &&
+            preCheckoutQuery.currency === 'XTR';
+        
+        if (!isValid) {
+            console.error('❌ pre_checkout_query validation failed:', { payload, total_amount: preCheckoutQuery.total_amount, currency: preCheckoutQuery.currency });
+            await ctx.answerPreCheckoutQuery(false, 'Ошибка валидации платежа');
+            return;
+        }
+
+        // Answer OK
+        await ctx.answerPreCheckoutQuery(true);
+        console.log('✅ pre_checkout_query validated and accepted');
+    } catch (err) {
+        console.error('❌ pre_checkout_query handler error:', err.message);
+        try {
+            await ctx.answerPreCheckoutQuery(false, 'Ошибка системы');
+        } catch {}
+    }
+});
+
+// Successful payment handler
+bot.on('successful_payment', async (ctx) => {
+    try {
+        const payment = ctx.message.successful_payment;
+        const userId = String(ctx.from.id);
+        
+        console.log('💰 successful_payment received:', {
+            provider_payment_charge_id: payment.provider_payment_charge_id,
+            telegram_payment_charge_id: payment.telegram_payment_charge_id,
+            total_amount: payment.total_amount,
+            currency: payment.currency,
+            invoice_payload: payment.invoice_payload
+        });
+
+        // Parse payload
+        let payload = {};
+        try {
+            payload = JSON.parse(payment.invoice_payload);
+        } catch (e) {
+            console.error('❌ Failed to parse invoice_payload:', e.message);
+            return;
+        }
+
+        const { kind, feature_id, ts } = payload;
+        const chargeId = payment.telegram_payment_charge_id;
+        const amount = payment.total_amount;
+
+        // Check if this charge_id was already processed (idempotency)
+        const { data: existingPayment } = await supabase
+            .from('payments')
+            .select('id')
+            .eq('telegram_charge_id', chargeId)
+            .maybeSingle();
+        
+        if (existingPayment) {
+            console.log('⚠️  Duplicate payment (charge_id already in DB):', chargeId);
+            return; // Don't process again
+        }
+
+        // Insert payment to Supabase
+        const { data: paymentRecord, error: insertErr } = await supabase
+            .from('payments')
+            .insert({
+                user_id: userId,
+                feature_id: feature_id,
+                kind: kind,
+                stars: amount,
+                telegram_charge_id: chargeId
+            })
+            .select('id')
+            .single();
+        
+        if (insertErr) {
+            console.error('❌ Failed to insert payment:', insertErr.message);
+            await ctx.reply('❌ Спасибо за платёж, но не удалось зарегистрировать статус. Обратитесь в поддержку.');
+            return;
+        }
+
+        console.log('✅ Payment saved to Supabase:', paymentRecord.id);
+
+        // Send Voiceflow event (clinical_priority_paid)
+        if (VF_API_KEY && VF_VERSION_ID) {
+            try {
+                await voiceflowEvent(userId, 'clinical_priority_paid', {
+                    feature_id: feature_id,
+                    stars: amount,
+                    telegram_payment_charge_id: chargeId
+                });
+            } catch (err) {
+                console.error('⚠️  Failed to send Voiceflow event (payment still saved):', err.message);
+            }
+        }
+
+        // Reply to user
+        await ctx.reply('✅ Спасибо! Статус 🧬 «Клинический приоритет» применён. Мы учтём идею в ближайшем обзоре приоритетных предложений.');
+
+        // (Optional) Send message to channel log
+        if (TELEGRAM_CHANNEL_ID) {
+            try {
+                const username = ctx.from.username ? `@${ctx.from.username}` : `tg://${userId}`;
+                await bot.telegram.sendMessage(
+                    TELEGRAM_CHANNEL_ID,
+                    `🧬 Идея получила статус **Клинический приоритет**\n` +
+                    `👤 Автор: ${username}\n` +
+                    `⭐️ Сумма: ${amount} Stars\n` +
+                    `🆔 Feature ID: ${feature_id}\n` +
+                    `📅 Дата: ${new Date().toISOString()}`,
+                    { parse_mode: 'Markdown' }
+                );
+                console.log('✅ Channel log sent');
+            } catch (err) {
+                console.error('⚠️  Failed to send channel log:', err.message);
+            }
+        }
+
+        console.log('✅ successful_payment processing completed');
+    } catch (err) {
+        console.error('❌ successful_payment handler error:', err.message);
     }
 });
 
