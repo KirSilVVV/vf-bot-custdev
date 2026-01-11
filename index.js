@@ -356,6 +356,12 @@ async function voiceflowInteract(userId, text) {
         console.log(`💾 Stored ${buttons.length} buttons for user ${userId}`);
     }
 
+    // Логирование отсутствия текста
+    if (messages.length === 0) {
+        console.warn('⚠️  NO TEXT MESSAGES in Voiceflow response!');
+        console.warn('📦 Full traces:', JSON.stringify(traces, null, 2).slice(0, 500));
+    }
+
     const messageText = messages.length
         ? messages.join('\n')
         : 'Я получил данные, но Voiceflow не вернул текстовый ответ. Проверьте, что в сценарии есть Text-ответы.';
