@@ -738,7 +738,8 @@ bot.on('successful_payment', async (ctx) => {
         const amount = payment.total_amount;
         
         // Support both request_id and feature_id (for backward compatibility)
-        const effectiveFeatureId = feature_id || String(request_id);
+        // For Voiceflow payments without request_id or feature_id, use user_id as fallback
+        const effectiveFeatureId = feature_id || String(request_id) || `voiceflow_${userId}`;
 
         // Check if this charge_id was already processed (idempotency)
         const { data: existingPayment } = await supabase
