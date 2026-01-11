@@ -653,17 +653,29 @@ bot.on('pre_checkout_query', async (ctx) => {
             invoice_payload: preCheckoutQuery.invoice_payload
         });
 
-        // Parse and validate payload
+        // Parse and validate payload (supports both JSON and compact pipe-delimited formats)
         let payload = {};
         try {
+            // Try JSON first (old format)
             payload = JSON.parse(preCheckoutQuery.invoice_payload);
         } catch (e) {
-            console.error('❌ Failed to parse invoice_payload:', e.message);
-            await ctx.answerPreCheckoutQuery(false, 'Ошибка в структуре платежа');
-            return;
+            // Try pipe-delimited format (new format): kind|source|user_id
+            const parts = preCheckoutQuery.invoice_payload.split('|');
+            if (parts.length >= 1) {
+                payload = {
+                    kind: parts[0],
+                    source: parts[1] || null,
+                    user_id: parts[2] || null
+                };
+                console.log('📋 Parsed compact pre_checkout payload:', payload);
+            } else {
+                console.error('❌ Failed to parse invoice_payload:', e.message);
+                await ctx.answerPreCheckoutQuery(false, 'Ошибка в структуре платежа');
+                return;
+            }
         }
 
-        // Validate: must be clinical_priority kind and amount must be 300 XTR
+        // Validate: must be clinical_priority kind and amount must be 1 XTR
         const isValid = 
             payload.kind === 'clinical_priority' &&
             preCheckoutQuery.total_amount === 1 &&
