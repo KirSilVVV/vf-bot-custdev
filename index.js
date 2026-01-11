@@ -101,6 +101,10 @@ const clinicalPriorityInvoiceCache = new Map();
 // Updated whenever user sends a message to bot
 const userChatMapping = new Map();
 
+// Store last buttons for each user (to know what choice they made)
+// user_id -> { buttons: [], timestamp: Date }
+const userButtonsMapping = new Map();
+
 function canIssueClinicalPriorityInvoice(userId, featureId) {
     const key = `${userId}:${featureId}`;
     const now = Date.now();
@@ -323,13 +327,33 @@ async function voiceflowInteract(userId, text) {
         
         // Parse buttons/choices from Voiceflow
         if (t?.type === 'choice' && t?.payload?.buttons && Array.isArray(t.payload.buttons)) {
-            for (const btn of t.payload.buttons) {
+            for (let i = 0; i < t.payload.buttons.length; i++) {
+                const btn = t.payload.buttons[i];
+                const buttonText = btn.name || btn.label || `Опция ${i + 1}`;
+                
+                // Create a short callback_data (max 64 bytes)
+                // Use index-based approach to keep it short
+                const callbackData = `choice_${i}`;
+                
+                console.log('📦 Parsed button:', { buttonText, callbackData, index: i });
+                
                 buttons.push({
-                    text: btn.name || btn.label || 'Кнопка',
-                    callback_data: `vf_choice:${btn.request?.payload?.intent?.name || btn.name || 'default'}`
+                    text: buttonText,
+                    callback_data: callbackData,
+                    name: btn.name,
+                    label: btn.label
                 });
             }
         }
+    }
+
+    // Store buttons for this user (to recall when they click)
+    if (buttons.length > 0) {
+        userButtonsMapping.set(String(userId), {
+            buttons: buttons,
+            timestamp: Date.now()
+        });
+        console.log(`💾 Stored ${buttons.length} buttons for user ${userId}`);
     }
 
     const messageText = messages.length
@@ -866,10 +890,23 @@ bot.on('callback_query', async (ctx) => {
 
     // 2) Now do the logic - even if it fails, Telegram already got the response
     try {
-        // Handle Voiceflow choice buttons (vf_choice:...)
-        if (typeof data === 'string' && data.startsWith('vf_choice:')) {
-            const choiceName = data.slice('vf_choice:'.length);
-            console.log('🔘 Voiceflow choice clicked:', { userId, choiceName, data });
+        // Handle Voiceflow choice buttons (choice_N)
+        if (typeof data === 'string' && data.startsWith('choice_')) {
+            const choiceIndex = parseInt(data.slice('choice_'.length), 10);
+            console.log('🔘 Voiceflow choice clicked:', { userId, choiceIndex, data });
+            
+            // Get stored buttons for this user
+            const userButtonsData = userButtonsMapping.get(userId);
+            if (!userButtonsData || !userButtonsData.buttons[choiceIndex]) {
+                console.error('❌ Stored buttons not found or invalid index:', { userId, choiceIndex });
+                await ctx.reply('Ошибка: выбор не найден. Попробуйте снова.');
+                return;
+            }
+            
+            const selectedButton = userButtonsData.buttons[choiceIndex];
+            const choiceName = selectedButton.name || selectedButton.label || selectedButton.text;
+            
+            console.log('✅ Selected button:', { choiceIndex, choiceName, buttonText: selectedButton.text });
             
             // Send choice back to Voiceflow as intent
             await ctx.sendChatAction('typing');
