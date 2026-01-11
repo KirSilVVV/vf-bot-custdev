@@ -954,6 +954,42 @@ bot.on('callback_query', async (ctx) => {
             
             console.log('✅ Selected button:', { choiceIndex, choiceName, buttonText: selectedButton.text });
             
+            // Special case: if button text is "pay", trigger payment instead of sending to Voiceflow
+            if (choiceName.toLowerCase() === 'pay') {
+                console.log('💳 Payment button clicked, sending invoice...');
+                
+                // Create invoice payload for Voiceflow payment
+                const payload = {
+                    kind: 'clinical_priority',
+                    feature_id: `clinical_priority_${userId}`,
+                    user_id: userId,
+                    ts: Math.floor(Date.now() / 1000),
+                    source: 'voiceflow'
+                };
+                const payloadStr = JSON.stringify(payload);
+                
+                try {
+                    await ctx.sendInvoice(
+                        {
+                            title: '🧬 Клинический приоритет',
+                            description: 'Отметить идею как клинически значимую для ускорения экспертного рассмотрения.',
+                            payload: payloadStr,
+                            provider_token: '', // Empty for Telegram Stars
+                            currency: 'XTR',
+                            prices: [
+                                { label: 'Клинический приоритет', amount: 1 }
+                            ]
+                        }
+                    );
+                    console.log('✅ Invoice sent successfully for payment button');
+                    await ctx.reply('Спасибо за внимание! Открыл оплату ⭐️');
+                } catch (invErr) {
+                    console.error('❌ Invoice send error:', invErr.message);
+                    await ctx.reply('❌ Не удалось открыть оплату. Попробуйте позже.');
+                }
+                return;
+            }
+            
             // Send choice back to Voiceflow as intent
             await ctx.sendChatAction('typing');
             const reply = await voiceflowInteract(userId, choiceName);
