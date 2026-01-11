@@ -190,7 +190,7 @@ async function publishRequestToChannel(requestData) {
         const titleText = requestData.title || '';
         const descriptionText = requestData.description || '';
 
-        const messageText = `🧩 <b>${titleText}</b>\n\n${descriptionText}\n\nТеги: ${tagsText}\nАвтор: ${authorText} (id:${authorIdText})\nID: ${requestId}`;
+        const messageText = `🧩 <b>${titleText}</b>\n\n${descriptionText}\n\nТеги: ${tagsText}\nАвтор: ${authorText} (id:${authorIdText})\nID: ${requestId}\n\n📊 Голоса: 0 | Буст: 0 | Итог: 0`;
 
         // Inline keyboard for voting
         const inline_keyboard = [
@@ -368,29 +368,40 @@ bot.on('text', async (ctx) => {
     const text = ctx.message.text;
 
     try {
-        // Check if text starts with CLINICAL_PRIORITY|<feature_id>
+        // Check if text starts with CLINICAL_PRIORITY|<request_id>
         if (typeof text === 'string' && text.startsWith('CLINICAL_PRIORITY|')) {
-            const featureId = text.slice('CLINICAL_PRIORITY|'.length).trim();
+            const requestId = parseInt(text.slice('CLINICAL_PRIORITY|'.length).trim(), 10);
             
-            if (!featureId) {
-                return ctx.reply('❌ Некорректный формат. Используй: CLINICAL_PRIORITY|feature_id');
+            if (!Number.isFinite(requestId)) {
+                return ctx.reply('❌ Некорректный формат. Используй: CLINICAL_PRIORITY|request_id (где request_id - число)');
             }
 
             // Rate-limit check
-            if (!canIssueClinicalPriorityInvoice(userId, featureId)) {
+            if (!canIssueClinicalPriorityInvoice(userId, String(requestId))) {
                 return ctx.reply('⏳ Вы уже создали счёт на эту идею менее 60 секунд назад. Попробуйте позже.');
+            }
+
+            // Verify request exists
+            const { data: requestExists } = await supabase
+                .from('requests')
+                .select('id')
+                .eq('id', requestId)
+                .maybeSingle();
+            
+            if (!requestExists) {
+                return ctx.reply('❌ Идея с таким ID не найдена.');
             }
 
             // Create invoice payload
             const payload = {
                 kind: 'clinical_priority',
-                feature_id: featureId,
+                request_id: requestId,
                 user_id: userId,
                 ts: Math.floor(Date.now() / 1000)
             };
             const payloadStr = JSON.stringify(payload);
 
-            console.log('💊 CLINICAL_PRIORITY trigger detected:', { userId, featureId, payload });
+            console.log('💊 CLINICAL_PRIORITY trigger detected:', { userId, requestId, payload });
 
             // Send invoice
             try {
@@ -583,7 +594,7 @@ bot.on('successful_payment', async (ctx) => {
             return;
         }
 
-        const { kind, feature_id, ts } = payload;
+        const { kind, request_id, ts } = payload;
         const chargeId = payment.telegram_payment_charge_id;
         const amount = payment.total_amount;
 
@@ -604,7 +615,7 @@ bot.on('successful_payment', async (ctx) => {
             .from('payments')
             .insert({
                 user_id: userId,
-                feature_id: feature_id,
+                feature_id: String(request_id),
                 kind: kind,
                 stars: amount,
                 telegram_charge_id: chargeId
@@ -620,13 +631,86 @@ bot.on('successful_payment', async (ctx) => {
 
         console.log('✅ Payment saved to Supabase:', paymentRecord.id);
 
+        // Update requests.metadata.paid_boost
+        const { data: requestData } = await supabase
+            .from('requests')
+            .select('metadata, channel_chat_id, channel_message_id')
+            .eq('id', request_id)
+            .maybeSingle();
+        
+        if (!requestData) {
+            console.error('❌ Request not found:', request_id);
+            await ctx.reply('❌ Идея не найдена в системе.');
+            return;
+        }
+
+        const currentMetadata = requestData.metadata || {};
+        const currentBoost = parseInt(currentMetadata.paid_boost || '0', 10);
+        const newBoost = currentBoost + 10;
+        
+        const { error: updateMetadataErr } = await supabase
+            .from('requests')
+            .update({
+                metadata: { ...currentMetadata, paid_boost: newBoost }
+            })
+            .eq('id', request_id);
+        
+        if (updateMetadataErr) {
+            console.error('❌ Failed to update metadata:', updateMetadataErr.message);
+        } else {
+            console.log('✅ Updated metadata.paid_boost:', { request_id, newBoost });
+        }
+
+        // Update message in channel
+        if (requestData.channel_chat_id && requestData.channel_message_id) {
+            try {
+                // Get vote count
+                const { count: voteCount } = await supabase
+                    .from('votes')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('request_id', request_id);
+                
+                const votesRows = voteCount || 0;
+                const paidBoost = newBoost;
+                const total = votesRows + paidBoost;
+
+                // Get request details
+                const { data: fullRequest } = await supabase
+                    .from('requests')
+                    .select('title, description, tags, author_username, author_tg_id')
+                    .eq('id', request_id)
+                    .maybeSingle();
+                
+                if (fullRequest) {
+                    const tagsText = (fullRequest.tags && fullRequest.tags.length) ? fullRequest.tags.join(', ') : '—';
+                    const authorText = fullRequest.author_username ? `@${fullRequest.author_username}` : '—';
+                    const authorIdText = fullRequest.author_tg_id ? fullRequest.author_tg_id : '—';
+
+                    const updatedMessageText = `🧩 <b>${fullRequest.title}</b>\n\n${fullRequest.description}\n\nТеги: ${tagsText}\nАвтор: ${authorText} (id:${authorIdText})\nID: ${request_id}\n\n📊 Голоса: ${votesRows} | Буст: ${paidBoost} | Итог: ${total}`;
+
+                    await bot.telegram.editMessageText(
+                        requestData.channel_chat_id,
+                        requestData.channel_message_id,
+                        undefined,
+                        updatedMessageText,
+                        { parse_mode: 'HTML', disable_web_page_preview: true }
+                    );
+                    
+                    console.log('✅ Updated channel message:', { request_id, votesRows, paidBoost, total });
+                }
+            } catch (err) {
+                console.error('⚠️  Failed to update channel message:', err.message);
+            }
+        }
+
         // Send Voiceflow event (clinical_priority_paid)
         if (VF_API_KEY && VF_VERSION_ID) {
             try {
                 await voiceflowEvent(userId, 'clinical_priority_paid', {
-                    feature_id: feature_id,
+                    request_id: request_id,
                     stars: amount,
-                    telegram_payment_charge_id: chargeId
+                    telegram_payment_charge_id: chargeId,
+                    paid_boost: newBoost
                 });
             } catch (err) {
                 console.error('⚠️  Failed to send Voiceflow event (payment still saved):', err.message);
@@ -645,7 +729,7 @@ bot.on('successful_payment', async (ctx) => {
                     `🧬 Идея получила статус **Клинический приоритет**\n` +
                     `👤 Автор: ${username}\n` +
                     `⭐️ Сумма: ${amount} Stars\n` +
-                    `🆔 Feature ID: ${feature_id}\n` +
+                    `🆔 Request ID: ${request_id}\n` +
                     `📅 Дата: ${new Date().toISOString()}`,
                     { parse_mode: 'Markdown' }
                 );
