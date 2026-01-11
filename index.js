@@ -97,6 +97,10 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 // Prevent duplicate invoices: one per feature_id per user per 60 sec
 const clinicalPriorityInvoiceCache = new Map();
 
+// User session mapping: user_id -> chat_id (for /vf/pay endpoint)
+// Updated whenever user sends a message to bot
+const userChatMapping = new Map();
+
 function canIssueClinicalPriorityInvoice(userId, featureId) {
     const key = `${userId}:${featureId}`;
     const now = Date.now();
@@ -357,6 +361,12 @@ async function voiceflowEvent(userId, eventName, eventData = {}) {
 }
 
 bot.start(async (ctx) => {
+    // Save user_id -> chat_id mapping
+    const userId = String(ctx.from.id);
+    const chatId = String(ctx.chat.id);
+    userChatMapping.set(userId, chatId);
+    console.log(`📱 Saved user session: ${userId} -> ${chatId}`);
+    
     await ctx.reply(
         'Привет! Я бот второго поколения, готовящий продукты на базе ИИ через crowdsource в медицине Российской Федерации. Напиши сообщение — я задам вопросы, подготовлю описание продукта и когда он появится на рынке, ты получишь 25% от доходов с него. Продукт регистрируется за тобой и реализуется командой разработчиков на базе Claude AI от Anthropic.'
     );
@@ -365,7 +375,12 @@ bot.start(async (ctx) => {
 // Text messages: check for CLINICAL_PRIORITY trigger OR send to Voiceflow
 bot.on('text', async (ctx) => {
     const userId = String(ctx.from.id);
+    const chatId = String(ctx.chat.id);
     const text = ctx.message.text;
+    
+    // Save user_id -> chat_id mapping for /vf/pay endpoint
+    userChatMapping.set(userId, chatId);
+    console.log(`📱 Updated user session: ${userId} -> ${chatId}`);
 
     try {
         // Check if text starts with CLINICAL_PRIORITY|<request_id>
@@ -594,9 +609,12 @@ bot.on('successful_payment', async (ctx) => {
             return;
         }
 
-        const { kind, request_id, ts } = payload;
+        const { kind, request_id, feature_id, ts, source } = payload;
         const chargeId = payment.telegram_payment_charge_id;
         const amount = payment.total_amount;
+        
+        // Support both request_id and feature_id (for backward compatibility)
+        const effectiveFeatureId = feature_id || String(request_id);
 
         // Check if this charge_id was already processed (idempotency)
         const { data: existingPayment } = await supabase
@@ -615,7 +633,7 @@ bot.on('successful_payment', async (ctx) => {
             .from('payments')
             .insert({
                 user_id: userId,
-                feature_id: String(request_id),
+                feature_id: effectiveFeatureId,
                 kind: kind,
                 stars: amount,
                 telegram_charge_id: chargeId
@@ -630,6 +648,38 @@ bot.on('successful_payment', async (ctx) => {
         }
 
         console.log('✅ Payment saved to Supabase:', paymentRecord.id);
+
+        // Check if this payment came from /vf/pay (source: 'voiceflow')
+        const isFromVoiceflow = source === 'voiceflow';
+        
+        if (isFromVoiceflow) {
+            console.log('🔵 Payment from Voiceflow /vf/pay, sending event back...');
+            
+            // Send Voiceflow event immediately
+            if (VF_API_KEY && VF_VERSION_ID) {
+                try {
+                    await voiceflowEvent(userId, 'clinical_priority_paid', {
+                        feature_id: effectiveFeatureId,
+                        stars: amount,
+                        telegram_payment_charge_id: chargeId
+                    });
+                    console.log('✅ Voiceflow event sent:', { feature_id: effectiveFeatureId, user_id: userId });
+                } catch (err) {
+                    console.error('⚠️  Failed to send Voiceflow event (payment still saved):', err.message);
+                }
+            }
+            
+            // Reply to user
+            await ctx.reply('✅ Спасибо! Платёж принят. Вернись в приложение для продолжения.');
+            console.log('✅ successful_payment (Voiceflow) processing completed');
+            return;
+        }
+
+        // Handle request-based payment (from /vf/submit with request_id)
+        if (!request_id) {
+            console.error('❌ Missing request_id for non-Voiceflow payment');
+            return;
+        }
 
         // Update requests.metadata.paid_boost
         const { data: requestData } = await supabase
@@ -1008,6 +1058,95 @@ if (process.env.NODE_ENV === 'production') {
             return res.status(500).json({
                 ok: false,
                 error: err.message,
+            });
+        }
+    });
+
+    // POST /vf/pay endpoint (Voiceflow-triggered payment)
+    app.post('/vf/pay', async (req, res) => {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+
+        try {
+            const { feature_id, user_id, source } = req.body;
+
+            // Validate input
+            if (!feature_id || !user_id || source !== 'voiceflow') {
+                return res.status(400).json({
+                    ok: false,
+                    error: 'Missing required fields: feature_id, user_id, source (must be "voiceflow")'
+                });
+            }
+
+            console.log('💰 /vf/pay request:', { feature_id, user_id, source });
+
+            // Find chat_id from user_id
+            const chatId = userChatMapping.get(String(user_id));
+            if (!chatId) {
+                console.error('❌ User session not found:', user_id);
+                return res.status(404).json({
+                    ok: false,
+                    error: `User ${user_id} has no active session. User must message bot first.`
+                });
+            }
+
+            // Create invoice payload
+            const payload = {
+                kind: 'clinical_priority',
+                feature_id: feature_id,
+                user_id: String(user_id),
+                ts: Math.floor(Date.now() / 1000),
+                source: 'voiceflow'
+            };
+            const payloadStr = JSON.stringify(payload);
+
+            // Send invoice via Telegram API
+            try {
+                const invoiceResponse = await axios.post(
+                    `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendInvoice`,
+                    {
+                        chat_id: chatId,
+                        title: '🧬 Клинический приоритет',
+                        description: `Feature ${feature_id}`,
+                        payload: payloadStr,
+                        provider_token: '', // Empty for Telegram Stars
+                        currency: 'XTR',
+                        prices: [
+                            { label: 'Клинический приоритет', amount: 1 }
+                        ]
+                    },
+                    { timeout: 10000 }
+                );
+
+                if (!invoiceResponse.data.ok) {
+                    console.error('❌ Telegram API error:', invoiceResponse.data);
+                    return res.status(500).json({
+                        ok: false,
+                        error: `Telegram API error: ${invoiceResponse.data.description}`
+                    });
+                }
+
+                const messageId = invoiceResponse.data.result.message_id;
+                console.log('✅ Invoice sent successfully:', { feature_id, user_id, messageId });
+
+                return res.status(200).json({
+                    ok: true,
+                    feature_id: feature_id,
+                    user_id: user_id,
+                    message_id: messageId,
+                    status: 'invoice_sent'
+                });
+            } catch (invErr) {
+                console.error('❌ Failed to send invoice:', invErr.message);
+                return res.status(500).json({
+                    ok: false,
+                    error: `Failed to send invoice: ${invErr.message}`
+                });
+            }
+        } catch (err) {
+            console.error('❌ POST /vf/pay error:', err.message);
+            return res.status(500).json({
+                ok: false,
+                error: err.message
             });
         }
     });
