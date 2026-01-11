@@ -830,14 +830,37 @@ bot.on('successful_payment', async (ctx) => {
                     const authorText = fullRequest.author_username ? `@${fullRequest.author_username}` : '—';
                     const authorIdText = fullRequest.author_tg_id ? fullRequest.author_tg_id : '—';
 
-                    const updatedMessageText = `🧩 <b>${fullRequest.title}</b>\n\n${fullRequest.description}\n\nТеги: ${tagsText}\nАвтор: ${authorText} (id:${authorIdText})\nID: ${request_id}\n\n📊 Голоса: ${votesRows} | Буст: ${paidBoost} | Итог: ${total}`;
+                    // Format with better structure
+                    const updatedMessageText = 
+                        `🧩 <b>${fullRequest.title}</b>\n\n` +
+                        `${fullRequest.description}\n\n` +
+                        `<b>Информация:</b>\n` +
+                        `Теги: ${tagsText}\n` +
+                        `Автор: ${authorText} (id:${authorIdText})\n` +
+                        `ID: ${request_id}\n\n` +
+                        `<b>📊 Метрики:</b>\n` +
+                        `👍 Голоса: ${votesRows}\n` +
+                        `🧬 Клинический буст: +${paidBoost}\n` +
+                        `⚡ Итоговый вес: ${total}`;
+
+                    // Preserve inline keyboard (voting buttons)
+                    const inline_keyboard = [
+                        [
+                            { text: `👍 Голосовать (${votesRows})`, callback_data: `vote:${request_id}` },
+                            { text: `🗳 Снять голос`, callback_data: `unvote:${request_id}` }
+                        ]
+                    ];
 
                     await bot.telegram.editMessageText(
                         requestData.channel_chat_id,
                         requestData.channel_message_id,
                         undefined,
                         updatedMessageText,
-                        { parse_mode: 'HTML', disable_web_page_preview: true }
+                        { 
+                            parse_mode: 'HTML', 
+                            disable_web_page_preview: true,
+                            reply_markup: { inline_keyboard }
+                        }
                     );
                     
                     console.log('✅ Updated channel message:', { request_id, votesRows, paidBoost, total });
