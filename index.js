@@ -746,8 +746,10 @@ bot.on('successful_payment', async (ctx) => {
         // Check if this payment came from /vf/pay (source: 'voiceflow')
         const isFromVoiceflow = source === 'voiceflow';
         
-        if (isFromVoiceflow) {
-            console.log('🔵 Payment from Voiceflow /vf/pay, sending event back...');
+        // If payment is from Voiceflow but has request_id, treat as request-based payment
+        // Otherwise, send event back to Voiceflow and return early
+        if (isFromVoiceflow && !request_id) {
+            console.log('🔵 Payment from Voiceflow /vf/pay (no request_id), sending event back...');
             
             // Send Voiceflow event immediately
             if (VF_API_KEY && VF_VERSION_ID) {
@@ -769,7 +771,7 @@ bot.on('successful_payment', async (ctx) => {
             return;
         }
 
-        // Handle request-based payment (from /vf/submit with request_id)
+        // Handle request-based payment (from /vf/submit with request_id OR from Voiceflow with request_id)
         if (!request_id) {
             console.error('❌ Missing request_id for non-Voiceflow payment');
             return;
@@ -871,14 +873,17 @@ bot.on('successful_payment', async (ctx) => {
         }
 
         // Send Voiceflow event (clinical_priority_paid)
-        if (VF_API_KEY && VF_VERSION_ID) {
+        // Отправляем для всех платежей с request_id (включая платежи от Voiceflow с request_id)
+        if (VF_API_KEY && VF_VERSION_ID && isFromVoiceflow) {
             try {
                 await voiceflowEvent(userId, 'clinical_priority_paid', {
                     request_id: request_id,
+                    feature_id: effectiveFeatureId,
                     stars: amount,
                     telegram_payment_charge_id: chargeId,
                     paid_boost: newBoost
                 });
+                console.log('✅ Voiceflow event sent (with channel update):', { request_id, feature_id: effectiveFeatureId, user_id: userId });
             } catch (err) {
                 console.error('⚠️  Failed to send Voiceflow event (payment still saved):', err.message);
             }
