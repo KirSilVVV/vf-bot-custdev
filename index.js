@@ -314,16 +314,33 @@ async function voiceflowInteract(userId, text) {
 
     const traces = res.data;
     const messages = [];
+    const buttons = [];
 
     for (const t of traces) {
         if (t?.type === 'text' && t?.payload?.message) {
             messages.push(t.payload.message);
         }
+        
+        // Parse buttons/choices from Voiceflow
+        if (t?.type === 'choice' && t?.payload?.buttons && Array.isArray(t.payload.buttons)) {
+            for (const btn of t.payload.buttons) {
+                buttons.push({
+                    text: btn.name || btn.label || 'Кнопка',
+                    callback_data: `vf_choice:${btn.request?.payload?.intent?.name || btn.name || 'default'}`
+                });
+            }
+        }
     }
 
-    return messages.length
+    const messageText = messages.length
         ? messages.join('\n')
         : 'Я получил данные, но Voiceflow не вернул текстовый ответ. Проверьте, что в сценарии есть Text-ответы.';
+
+    return {
+        text: messageText,
+        buttons: buttons,
+        hasButtons: buttons.length > 0
+    };
 }
 
 async function sendToVoiceflowAsUserTurn(userId, extractedText) {
@@ -445,7 +462,22 @@ bot.on('text', async (ctx) => {
         await logExtracted({ userId, kind: 'text', fileName: '-', extracted: text });
         await ctx.sendChatAction('typing');
         const reply = await voiceflowInteract(userId, text);
-        await ctx.reply(reply);
+        
+        // Send text with buttons if available
+        if (reply.hasButtons) {
+            const inline_keyboard = [];
+            // Group buttons in rows of 2
+            for (let i = 0; i < reply.buttons.length; i += 2) {
+                const row = [reply.buttons[i]];
+                if (i + 1 < reply.buttons.length) {
+                    row.push(reply.buttons[i + 1]);
+                }
+                inline_keyboard.push(row);
+            }
+            await ctx.reply(reply.text, { reply_markup: { inline_keyboard } });
+        } else {
+            await ctx.reply(reply.text);
+        }
     } catch (err) {
         console.error(err?.response?.data || err.message);
         await ctx.reply('Ошибка связи с Voiceflow. Проверь API key / Version ID.');
@@ -487,7 +519,20 @@ bot.on('photo', async (ctx) => {
 
         await ctx.sendChatAction('typing');
         const reply = await sendToVoiceflowAsUserTurn(userId, truncate(extracted));
-        await ctx.reply(reply);
+        
+        if (reply.hasButtons) {
+            const inline_keyboard = [];
+            for (let i = 0; i < reply.buttons.length; i += 2) {
+                const row = [reply.buttons[i]];
+                if (i + 1 < reply.buttons.length) {
+                    row.push(reply.buttons[i + 1]);
+                }
+                inline_keyboard.push(row);
+            }
+            await ctx.reply(reply.text, { reply_markup: { inline_keyboard } });
+        } else {
+            await ctx.reply(reply.text);
+        }
     } catch (err) {
         console.error(err?.response?.data || err.message);
         await ctx.reply(
@@ -532,7 +577,20 @@ bot.on('document', async (ctx) => {
 
         await ctx.sendChatAction('typing');
         const reply = await sendToVoiceflowAsUserTurn(userId, truncate(extracted));
-        await ctx.reply(reply);
+        
+        if (reply.hasButtons) {
+            const inline_keyboard = [];
+            for (let i = 0; i < reply.buttons.length; i += 2) {
+                const row = [reply.buttons[i]];
+                if (i + 1 < reply.buttons.length) {
+                    row.push(reply.buttons[i + 1]);
+                }
+                inline_keyboard.push(row);
+            }
+            await ctx.reply(reply.text, { reply_markup: { inline_keyboard } });
+        } else {
+            await ctx.reply(reply.text);
+        }
     } catch (err) {
         console.error(err?.response?.data || err.message);
         await ctx.reply(
@@ -799,6 +857,7 @@ bot.on('successful_payment', async (ctx) => {
 bot.on('callback_query', async (ctx) => {
     const data = ctx.callbackQuery?.data || '';
     const voterId = ctx.from.id;
+    const userId = String(ctx.from.id);
     
     // 1) IMMEDIATELY ACK to prevent Telegram timeout/retry
     try { 
@@ -807,6 +866,31 @@ bot.on('callback_query', async (ctx) => {
 
     // 2) Now do the logic - even if it fails, Telegram already got the response
     try {
+        // Handle Voiceflow choice buttons (vf_choice:...)
+        if (typeof data === 'string' && data.startsWith('vf_choice:')) {
+            const choiceName = data.slice('vf_choice:'.length);
+            console.log('🔘 Voiceflow choice clicked:', { userId, choiceName, data });
+            
+            // Send choice back to Voiceflow as intent
+            await ctx.sendChatAction('typing');
+            const reply = await voiceflowInteract(userId, choiceName);
+            
+            if (reply.hasButtons) {
+                const inline_keyboard = [];
+                for (let i = 0; i < reply.buttons.length; i += 2) {
+                    const row = [reply.buttons[i]];
+                    if (i + 1 < reply.buttons.length) {
+                        row.push(reply.buttons[i + 1]);
+                    }
+                    inline_keyboard.push(row);
+                }
+                await ctx.reply(reply.text, { reply_markup: { inline_keyboard } });
+            } else {
+                await ctx.reply(reply.text);
+            }
+            return;
+        }
+
         let requestId = null;
         let answerText = 'Обработано';
 
