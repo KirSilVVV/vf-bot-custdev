@@ -417,14 +417,17 @@ bot.start(async (ctx) => {
     try {
         // Send video from project root using absolute path
         const videoPath = path.join(process.cwd(), 'IMG_2085.MOV');
+        console.log(`📹 Attempting to send video from: ${videoPath}`);
         await ctx.replyWithVideo(
             { source: videoPath },
             {
                 caption: 'Добро пожаловать! 🎬'
             }
         );
+        console.log(`✅ Video sent successfully`);
     } catch (err) {
         console.warn('⚠️  Failed to send video:', err.message);
+        console.error(`📹 Attempted path: ${path.join(process.cwd(), 'IMG_2085.MOV')}`);
     }
     
     await ctx.reply(
