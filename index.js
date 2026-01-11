@@ -700,13 +700,25 @@ bot.on('successful_payment', async (ctx) => {
             invoice_payload: payment.invoice_payload
         });
 
-        // Parse payload
+        // Parse payload (supports both JSON format and compact pipe-delimited format)
         let payload = {};
         try {
+            // Try JSON first (old format)
             payload = JSON.parse(payment.invoice_payload);
         } catch (e) {
-            console.error('❌ Failed to parse invoice_payload:', e.message);
-            return;
+            // Try pipe-delimited format (new format): kind|source|user_id
+            const parts = payment.invoice_payload.split('|');
+            if (parts.length >= 3) {
+                payload = {
+                    kind: parts[0],
+                    source: parts[1],
+                    user_id: parts[2]
+                };
+                console.log('📋 Parsed compact payload:', payload);
+            } else {
+                console.error('❌ Failed to parse invoice_payload:', e.message);
+                return;
+            }
         }
 
         const { kind, request_id, feature_id, ts, source } = payload;
@@ -958,15 +970,9 @@ bot.on('callback_query', async (ctx) => {
             if (choiceName.toLowerCase() === 'pay') {
                 console.log('💳 Payment button clicked, sending invoice...');
                 
-                // Create invoice payload for Voiceflow payment
-                const payload = {
-                    kind: 'clinical_priority',
-                    feature_id: `clinical_priority_${userId}`,
-                    user_id: userId,
-                    ts: Math.floor(Date.now() / 1000),
-                    source: 'voiceflow'
-                };
-                const payloadStr = JSON.stringify(payload);
+                // Create invoice payload (must be <= 128 bytes)
+                // Format: kind|source|user_id (compact to fit Telegram limit)
+                const payloadStr = `clinical_priority|voiceflow|${userId}`;
                 
                 try {
                     await ctx.sendInvoice(
