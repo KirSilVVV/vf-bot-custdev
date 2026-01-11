@@ -415,9 +415,10 @@ bot.start(async (ctx) => {
     console.log(`📱 Saved user session: ${userId} -> ${chatId}`);
     
     try {
-        // Send video from project root
+        // Send video from project root using absolute path
+        const videoPath = path.join(process.cwd(), 'IMG_2085.MOV');
         await ctx.replyWithVideo(
-            { source: 'img_2085.mp4' },
+            { source: videoPath },
             {
                 caption: 'Добро пожаловать! 🎬'
             }
