@@ -5,6 +5,7 @@
 // Requirements (Node 18+ recommended; you have Node 24):
 //   npm i telegraf axios dotenv sharp tesseract.js pdf-parse mammoth file-type
 
+import 'dotenv/config';
 import fs from 'fs/promises';
 import path from 'path';
 import sharp from 'sharp';
@@ -738,8 +739,8 @@ bot.on('successful_payment', async (ctx) => {
         const amount = payment.total_amount;
         
         // Support both request_id and feature_id (for backward compatibility)
-        // For Voiceflow payments without request_id or feature_id, use user_id as fallback
-        const effectiveFeatureId = feature_id || String(request_id) || `voiceflow_${userId}`;
+        // For Voiceflow payments without request_id or feature_id, use charge_id to ensure uniqueness
+        const effectiveFeatureId = feature_id || String(request_id) || `vf_${userId}_${Date.now()}`;
 
         // Check if this charge_id was already processed (idempotency)
         const { data: existingPayment } = await supabase
@@ -753,15 +754,18 @@ bot.on('successful_payment', async (ctx) => {
             return; // Don't process again
         }
 
-        // Insert payment to Supabase
+        // Insert payment to Supabase (with upsert to handle unique constraint gracefully)
         const { data: paymentRecord, error: insertErr } = await supabase
             .from('payments')
-            .insert({
+            .upsert({
                 user_id: userId,
                 feature_id: effectiveFeatureId,
                 kind: kind,
                 stars: amount,
                 telegram_charge_id: chargeId
+            }, {
+                onConflict: 'user_id,feature_id,kind',
+                ignoreDuplicates: false
             })
             .select('id')
             .single();
