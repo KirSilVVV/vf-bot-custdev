@@ -117,13 +117,25 @@ CREATE OR REPLACE VIEW payments_user_summary AS
 -- Data Integrity Checks
 -- ============================================================================
 
--- Check that stars is always positive
-ALTER TABLE payments 
-    ADD CONSTRAINT check_stars_positive CHECK (stars > 0);
+-- Check that stars is always positive (add only if doesn't exist)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'check_stars_positive'
+    ) THEN
+        ALTER TABLE payments ADD CONSTRAINT check_stars_positive CHECK (stars > 0);
+    END IF;
+END $$;
 
--- Check that user_id is not empty
-ALTER TABLE payments 
-    ADD CONSTRAINT check_user_id_not_empty CHECK (user_id != '');
+-- Check that user_id is not empty (add only if doesn't exist)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'check_user_id_not_empty'
+    ) THEN
+        ALTER TABLE payments ADD CONSTRAINT check_user_id_not_empty CHECK (user_id != '');
+    END IF;
+END $$;
 
 -- ============================================================================
 -- Cleanup & Rollback (if needed)
