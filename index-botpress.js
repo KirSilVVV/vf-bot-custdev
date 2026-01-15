@@ -8,6 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 import express from 'express';
 import path from 'path';
 import OpenAI from 'openai';
+import cron from 'node-cron';
 import { chatWithAI, shouldOfferPublish, parseAIFinalResponse } from './ai-helper.js';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -28,6 +29,93 @@ if (!TELEGRAM_BOT_TOKEN || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !TELEG
 }
 
 const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+// ============================================================================
+// CRON: Автоматическое обновление топ-идей каждый день в 12:00 МСК
+// ============================================================================
+async function updateTopIdeasPost() {
+    try {
+        console.log('📊 [CRON] Обновляю топ-идеи...');
+        
+        const { data: topRequests, error } = await supabase
+            .from('requests')
+            .select('id, request_text, vote_count, user_name, channel_message_id')
+            .order('vote_count', { ascending: false })
+            .limit(10);
+        
+        if (error || !topRequests || topRequests.length === 0) {
+            console.log('📭 [CRON] Нет идей для топа');
+            return;
+        }
+        
+        let topMessage = `🏆 <b>ТОП ИДЕЙ ПО ГОЛОСАМ</b>\n\n`;
+        
+        topRequests.forEach((req, index) => {
+            const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
+            const votes = req.vote_count || 0;
+            const text = req.request_text?.substring(0, 80) || 'Без описания';
+            
+            topMessage += `${medal} <b>${votes} голосов</b>\n`;
+            topMessage += `   ${text}...\n`;
+            topMessage += `   <a href="https://t.me/ai_requests/${req.channel_message_id}">Перейти →</a>\n\n`;
+        });
+        
+        topMessage += `\n<i>Обновлено: ${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}</i>`;
+        
+        const { data: pinnedData } = await supabase
+            .from('system_messages')
+            .select('message_id')
+            .eq('type', 'top_ideas')
+            .single();
+        
+        if (pinnedData?.message_id) {
+            try {
+                await bot.telegram.editMessageText(
+                    TELEGRAM_CHANNEL_ID,
+                    pinnedData.message_id,
+                    undefined,
+                    topMessage,
+                    { parse_mode: 'HTML', disable_web_page_preview: true }
+                );
+                console.log('✅ [CRON] Топ обновлён');
+            } catch (editError) {
+                const newMsg = await bot.telegram.sendMessage(TELEGRAM_CHANNEL_ID, topMessage, { 
+                    parse_mode: 'HTML',
+                    disable_web_page_preview: true 
+                });
+                await bot.telegram.pinChatMessage(TELEGRAM_CHANNEL_ID, newMsg.message_id);
+                await supabase
+                    .from('system_messages')
+                    .upsert({ type: 'top_ideas', message_id: newMsg.message_id });
+                console.log('✅ [CRON] Создан новый топ');
+            }
+        } else {
+            const newMsg = await bot.telegram.sendMessage(TELEGRAM_CHANNEL_ID, topMessage, { 
+                parse_mode: 'HTML',
+                disable_web_page_preview: true 
+            });
+            await bot.telegram.pinChatMessage(TELEGRAM_CHANNEL_ID, newMsg.message_id);
+            await supabase
+                .from('system_messages')
+                .insert({ type: 'top_ideas', message_id: newMsg.message_id });
+            console.log('✅ [CRON] Топ создан и закреплен');
+        }
+    } catch (error) {
+        console.error('❌ [CRON] Ошибка обновления топа:', error);
+    }
+}
+
+// Cron job: каждый день в 12:00 по Москве (UTC+3 = 09:00 UTC)
+cron.schedule('0 9 * * *', () => {
+    console.log('⏰ [CRON] Запуск обновления топа (12:00 МСК)');
+    updateTopIdeasPost();
+}, {
+    timezone: 'UTC'
+});
+
+console.log('⏰ Cron job настроен: обновление топа каждый день в 12:00 МСК');
+
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 // OpenAI client (опциональный)
