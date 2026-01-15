@@ -161,8 +161,11 @@ bot.on('text', async (ctx) => {
 
 // Функция публикации идеи в канал
 async function publishToChannel(ctx, userId, messageText, userName, initialVotes = 0) {
+    console.log('📝 publishToChannel called:', { userId, messageText: messageText?.substring(0, 50), userName, initialVotes });
+    
     try {
-        if (messageText.length < 10) {
+        if (!messageText || messageText.length < 10) {
+            console.log('❌ Message too short:', messageText?.length);
             await ctx.answerCbQuery('Идея слишком короткая');
             return null;
         }
@@ -256,13 +259,18 @@ bot.on('callback_query', async (ctx) => {
         if (callbackData === 'publish_free') {
             console.log('📢 Publishing free...');
             const draft = userDrafts.get(userId);
+            console.log('Draft found:', draft ? 'YES' : 'NO', draft);
+            
             if (!draft) {
                 await ctx.answerCbQuery('Сначала отправь свою идею');
                 return;
             }
             
             await ctx.answerCbQuery('Публикую...');
+            console.log('Calling publishToChannel with:', { userId, text: draft.text, userName: draft.userName });
+            
             const requestId = await publishToChannel(ctx, userId, draft.text, draft.userName, 0);
+            console.log('Publication result:', requestId);
             
             if (requestId) {
                 await ctx.editMessageText(
