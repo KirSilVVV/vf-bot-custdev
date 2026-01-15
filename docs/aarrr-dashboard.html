@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AARRR Dashboard - Pirate Metrics</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--color-start), var(--color-end));
+        }
+
+        .metric-card.acquisition { --color-start: #3b82f6; --color-end: #2563eb; }
+        .metric-card.activation { --color-start: #10b981; --color-end: #059669; }
+        .metric-card.retention { --color-start: #f59e0b; --color-end: #d97706; }
+        .metric-card.revenue { --color-start: #8b5cf6; --color-end: #7c3aed; }
+        .metric-card.referral { --color-start: #ec4899; --color-end: #db2777; }
+
+        .metric-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .metric-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-right: 12px;
+        }
+
+        .acquisition .metric-icon { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+        .activation .metric-icon { background: linear-gradient(135deg, #10b981, #059669); }
+        .retention .metric-icon { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .revenue .metric-icon { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+        .referral .metric-icon { background: linear-gradient(135deg, #ec4899, #db2777); }
+
+        .metric-title {
+            font-size: 0.875rem;
+            color: #6b7280;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 8px;
+        }
+
+        .metric-change {
+            font-size: 0.875rem;
+            font-weight: 600;
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        .metric-change.positive {
+            color: #059669;
+            background: #d1fae5;
+        }
+
+        .metric-change.negative {
+            color: #dc2626;
+            background: #fee2e2;
+        }
+
+        .metric-description {
+            color: #6b7280;
+            font-size: 0.875rem;
+            margin-top: 12px;
+            line-height: 1.5;
+        }
+
+        .chart-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+
+        .chart-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 20px;
+        }
+
+        .funnel-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .funnel-step {
+            position: relative;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            color: white;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .funnel-step:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .cohort-table {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: center;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.875rem;
+        }
+
+        td {
+            color: #6b7280;
+        }
+
+        .retention-cell {
+            background: linear-gradient(to right, #dbeafe, white);
+            font-weight: 600;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 30px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏴‍☠️ AARRR Dashboard</h1>
+            <p class="subtitle">Pirate Metrics - Product Analytics Framework</p>
+        </header>
+
+        <!-- Main Metrics Grid -->
+        <div class="metrics-grid">
+            <!-- Acquisition -->
+            <div class="metric-card acquisition">
+                <div class="metric-header">
+                    <div class="metric-icon">🎯</div>
+                    <div class="metric-title">Acquisition</div>
+                </div>
+                <div class="metric-value">12,458</div>
+                <span class="metric-change positive">↑ 23.5%</span>
+                <p class="metric-description">New users from all channels this month. Top source: Organic search (45%)</p>
+            </div>
+
+            <!-- Activation -->
+            <div class="metric-card activation">
+                <div class="metric-header">
+                    <div class="metric-icon">✨</div>
+                    <div class="metric-title">Activation</div>
+                </div>
+                <div class="metric-value">68.2%</div>
+                <span class="metric-change positive">↑ 5.3%</span>
+                <p class="metric-description">Users who completed onboarding and first key action within 24h</p>
+            </div>
+
+            <!-- Retention -->
+            <div class="metric-card retention">
+                <div class="metric-header">
+                    <div class="metric-icon">🔄</div>
+                    <div class="metric-title">Retention</div>
+                </div>
+                <div class="metric-value">42.8%</div>
+                <span class="metric-change negative">↓ 2.1%</span>
+                <p class="metric-description">Day 30 retention rate. Users returning after initial signup</p>
+            </div>
+
+            <!-- Revenue -->
+            <div class="metric-card revenue">
+                <div class="metric-header">
+                    <div class="metric-icon">💰</div>
+                    <div class="metric-title">Revenue</div>
+                </div>
+                <div class="metric-value">$89.4K</div>
+                <span class="metric-change positive">↑ 18.7%</span>
+                <p class="metric-description">MRR from subscriptions. ARPU: $12.50, LTV: $450</p>
+            </div>
+
+            <!-- Referral -->
+            <div class="metric-card referral">
+                <div class="metric-header">
+                    <div class="metric-icon">🚀</div>
+                    <div class="metric-title">Referral</div>
+                </div>
+                <div class="metric-value">1,245</div>
+                <span class="metric-change positive">↑ 31.2%</span>
+                <p class="metric-description">New users from referrals. Viral coefficient: 1.8</p>
+            </div>
+        </div>
+
+        <!-- Conversion Funnel -->
+        <div class="chart-section">
+            <h2 class="chart-title">📊 Conversion Funnel</h2>
+            <div class="funnel-chart">
+                <div class="funnel-step" style="width: 100%; background: linear-gradient(90deg, #3b82f6, #2563eb);">
+                    <span>Website Visitors</span>
+                    <span>50,000 (100%)</span>
+                </div>
+                <div class="funnel-step" style="width: 50%; background: linear-gradient(90deg, #10b981, #059669);">
+                    <span>Sign Ups</span>
+                    <span>25,000 (50%)</span>
+                </div>
+                <div class="funnel-step" style="width: 34%; background: linear-gradient(90deg, #f59e0b, #d97706);">
+                    <span>Activated Users</span>
+                    <span>17,050 (68.2%)</span>
+                </div>
+                <div class="funnel-step" style="width: 20%; background: linear-gradient(90deg, #8b5cf6, #7c3aed);">
+                    <span>Paying Customers</span>
+                    <span>10,000 (40%)</span>
+                </div>
+                <div class="funnel-step" style="width: 15%; background: linear-gradient(90deg, #ec4899, #db2777);">
+                    <span>Referrers</span>
+                    <span>7,500 (30%)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cohort Analysis -->
+        <div class="chart-section">
+            <h2 class="chart-title">📈 Cohort Retention Analysis</h2>
+            <div class="cohort-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cohort</th>
+                            <th>Size</th>
+                            <th>Day 1</th>
+                            <th>Day 7</th>
+                            <th>Day 14</th>
+                            <th>Day 30</th>
+                            <th>Day 60</th>
+                            <th>Day 90</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Jan 2026</strong></td>
+                            <td>12,458</td>
+                            <td class="retention-cell">72%</td>
+                            <td class="retention-cell">58%</td>
+                            <td class="retention-cell">51%</td>
+                            <td class="retention-cell">43%</td>
+                            <td>-</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Dec 2025</strong></td>
+                            <td>11,234</td>
+                            <td class="retention-cell">70%</td>
+                            <td class="retention-cell">55%</td>
+                            <td class="retention-cell">48%</td>
+                            <td class="retention-cell">42%</td>
+                            <td class="retention-cell">38%</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Nov 2025</strong></td>
+                            <td>10,892</td>
+                            <td class="retention-cell">68%</td>
+                            <td class="retention-cell">52%</td>
+                            <td class="retention-cell">45%</td>
+                            <td class="retention-cell">40%</td>
+                            <td class="retention-cell">36%</td>
+                            <td class="retention-cell">33%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Oct 2025</strong></td>
+                            <td>9,567</td>
+                            <td class="retention-cell">65%</td>
+                            <td class="retention-cell">50%</td>
+                            <td class="retention-cell">43%</td>
+                            <td class="retention-cell">38%</td>
+                            <td class="retention-cell">34%</td>
+                            <td class="retention-cell">31%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <footer class="footer">
+            <p>💡 Based on AARRR (Pirate Metrics) framework by Dave McClure</p>
+            <p style="font-size: 0.875rem; margin-top: 8px;">Data updated: January 13, 2026</p>
+        </footer>
+    </div>
+
+    <script>
+        // Animate values on load
+        document.addEventListener('DOMContentLoaded', () => {
+            const metricValues = document.querySelectorAll('.metric-value');
+            metricValues.forEach(el => {
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    el.style.transition = 'all 0.6s ease';
+                    el.style.opacity = '1';
+                    el.style.transform = 'translateY(0)';
+                }, 100);
+            });
+
+            // Interactive hover effects
+            const cards = document.querySelectorAll('.metric-card');
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', () => {
+                    card.style.transition = 'all 0.3s ease';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

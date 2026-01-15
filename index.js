@@ -430,6 +430,27 @@ bot.start(async (ctx) => {
         console.warn('⚠️  Failed to send video:', err.message);
         console.error(`📹 Attempted path: ${path.join(process.cwd(), 'IMG_2085.MOV')}`);
     }
+
+    // Launch Voiceflow conversation with 'start' intent
+    try {
+        const url = `https://general-runtime.voiceflow.com/state/${VF_VERSION_ID}/user/${userId}/interact`;
+        await axios.post(
+            url,
+            { 
+                action: { type: 'launch' }  // Triggers Voiceflow Start block
+            },
+            {
+                headers: {
+                    Authorization: VF_API_KEY,
+                    'Content-Type': 'application/json',
+                },
+                timeout: 20000,
+            }
+        );
+        console.log(`🚀 Launched Voiceflow conversation for user ${userId}`);
+    } catch (vfErr) {
+        console.error('❌ Failed to launch Voiceflow:', vfErr.message);
+    }
 });
 
 // Text messages: check for CLINICAL_PRIORITY trigger OR send to Voiceflow

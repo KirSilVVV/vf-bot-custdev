@@ -1,0 +1,2574 @@
+{
+  "version": {
+    "_version": 13.06,
+    "autoSaveFromRestore": false,
+    "canvasTemplates": [],
+    "components": [],
+    "creatorID": 1907896,
+    "manualSave": false,
+    "model": {},
+    "name": "Initial Version",
+    "platformData": {
+      "slots": [],
+      "intents": [
+        {
+          "key": "None",
+          "name": "None",
+          "slots": [],
+          "inputs": [],
+          "noteID": null
+        }
+      ],
+      "settings": {
+        "restart": true,
+        "repeat": 100,
+        "locales": [
+          "en-US"
+        ],
+        "globalNoMatch": {
+          "type": "static",
+          "prompt": {
+            "content": [
+              {
+                "children": [
+                  {
+                    "text": "Sorry, I didn’t get that. Please try again."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "messageDelay": {
+          "durationMilliseconds": 500
+        },
+        "defaultVoice": "elevenlabs:eleven_turbo_v2_5:ZF6FPAbjXT4488VcRRnw",
+        "deepgramASR": {
+          "silenceWaitMS": 10,
+          "punctuationWaitMS": 200,
+          "partialWaitMS": 1000,
+          "interruptionWaitWords": 1,
+          "audioCue": null
+        }
+      },
+      "publishing": {
+        "avatar": "https://cdn.voiceflow.com/assets/logo.png",
+        "color": "#397DFF",
+        "description": "Hi, how can I help you today?",
+        "feedback": false,
+        "image": "https://cdn.voiceflow.com/assets/logo.png",
+        "persistence": "localStorage",
+        "position": "right",
+        "spacing": {
+          "side": 24,
+          "bottom": 24
+        },
+        "title": "Your AI agent",
+        "watermark": true,
+        "audioInterface": true
+      },
+      "platform": "webchat"
+    },
+    "programResources": {
+      "flows": {},
+      "agents": {
+        "695a74667822ec0006e2736e": {
+          "name": "Приветствие и рамка",
+          "settings": {
+            "model": "claude-4-sonnet",
+            "maxTokens": 5000,
+            "temperature": 0.3,
+            "reasoningEffort": null
+          },
+          "cardTool": null,
+          "apiTools": [],
+          "pathTools": [
+            {
+              "id": "695a74667822ec0006e2737b",
+              "name": "Пользователь готов начать",
+              "variables": [],
+              "description": "Пользователь дал согласие на продолжение разговора.",
+              "messages": null
+            },
+            {
+              "id": "695a74667822ec0006e2737c",
+              "name": "Пользователь не готов",
+              "variables": [],
+              "description": "Пользователь отказался продолжать диалог.",
+              "messages": null
+            }
+          ],
+          "flowTools": [],
+          "buttonTool": null,
+          "description": null,
+          "carouselTool": null,
+          "instructions": "Поздоровайся с пользователем и очерти рамки диалога: объясни, что речь пойдёт о выявлении сложностей из практики, где цифровое решение облегчило бы работу. Подчеркни, что не нужно заранее формулировать проблему или решение. Сообщи, что возможно обсуждение процента от использования инструмента, который может появиться по итогам. Спроси, готов ли собеседник продолжить.",
+          "functionTools": [],
+          "webSearchTool": null,
+          "callForwardTool": null,
+          "integrationTools": [],
+          "knowledgeBaseTool": null,
+          "mcpIntegrationTools": []
+        },
+        "695a74667822ec0006e2736f": {
+          "name": "Быстрый фильтр: подтверждение сферы",
+          "settings": {
+            "model": "claude-4-sonnet",
+            "maxTokens": 5000,
+            "temperature": 0.3,
+            "reasoningEffort": null
+          },
+          "cardTool": null,
+          "apiTools": [],
+          "pathTools": [
+            {
+              "id": "695a74667822ec0006e2737d",
+              "name": "Работает в медицине",
+              "variables": [],
+              "description": "Пользователь подтвердил, что работает в медицинской сфере.",
+              "messages": null
+            },
+            {
+              "id": "695a74667822ec0006e2737e",
+              "name": "Не работает в медицине",
+              "variables": [],
+              "description": "Пользователь указал, что не работает в медицине.",
+              "messages": null
+            }
+          ],
+          "flowTools": [],
+          "buttonTool": null,
+          "description": null,
+          "carouselTool": null,
+          "instructions": "Уточни, работает ли собеседник в медицине или здравоохранении. Если нет — мягко завершай диалог.",
+          "functionTools": [],
+          "webSearchTool": null,
+          "callForwardTool": null,
+          "integrationTools": [],
+          "knowledgeBaseTool": null,
+          "mcpIntegrationTools": []
+        },
+        "695a74667822ec0006e27370": {
+          "name": "Выбор категории сложности и режима входа",
+          "settings": {
+            "model": "claude-4-sonnet",
+            "maxTokens": 5000,
+            "temperature": 0.3,
+            "reasoningEffort": null
+          },
+          "cardTool": null,
+          "apiTools": [],
+          "pathTools": [
+            {
+              "id": "695a74667822ec0006e2737f",
+              "name": "Один из вариантов выбран, режим входа определён",
+              "variables": [],
+              "description": "Пользователь выбрал категорию и как предпочитает начать разговор.",
+              "messages": null
+            }
+          ],
+          "flowTools": [],
+          "buttonTool": null,
+          "description": null,
+          "carouselTool": null,
+          "instructions": "Спроси, в каком аспекте работы чаще всего возникает ощущение, что процесс можно упростить или автоматизировать (выбрать одну из категорий). Затем спроси, удобнее ли начать разговор с описания конкретной ситуации или с идеи инструмента.",
+          "functionTools": [],
+          "webSearchTool": null,
+          "callForwardTool": null,
+          "integrationTools": [],
+          "knowledgeBaseTool": null,
+          "mcpIntegrationTools": []
+        },
+        "695a74667822ec0006e27371": {
+          "name": "Описание ситуации или идеи",
+          "settings": {
+            "model": "claude-4-sonnet",
+            "maxTokens": 5000,
+            "temperature": 0.3,
+            "reasoningEffort": null
+          },
+          "cardTool": null,
+          "apiTools": [],
+          "pathTools": [
+            {
+              "id": "695a74667822ec0006e27380",
+              "name": "Пользователь приложил файл",
+              "variables": [],
+              "description": "Получен файл-свидетельство ситуации.",
+              "messages": null
+            },
+            {
+              "id": "695a74667822ec0006e27381",
+              "name": "Пользователь описал ситуацию текстом",
+              "variables": [],
+              "description": "Получено текстовое описание ситуации.",
+              "messages": null
+            }
+          ],
+          "flowTools": [],
+          "buttonTool": null,
+          "description": null,
+          "carouselTool": null,
+          "instructions": "Попроси пользователя описать одну конкретную ситуацию на работе, где возникла мысль: 'Здесь должно быть проще'. Предложи при необходимости прикрепить скриншот/фото/PDF. Если файл есть — отправь на анализ файла. Если нет — отправь на анализ текстового описания.",
+          "functionTools": [],
+          "webSearchTool": null,
+          "callForwardTool": null,
+          "integrationTools": [],
+          "knowledgeBaseTool": null,
+          "mcpIntegrationTools": []
+        },
+        "695a74667822ec0006e27372": {
+          "name": "Анализ файла",
+          "settings": {
+            "model": "claude-4-sonnet",
+            "maxTokens": 5000,
+            "temperature": 0.3,
+            "reasoningEffort": null
+          },
+          "cardTool": null,
+          "apiTools": [],
+          "pathTools": [
+            {
+              "id": "695a74667822ec0006e27382",
+              "name": "Есть конкретный рабочий случай",
+              "variables": [],
+              "description": "По файлу удалось выделить конкретную рабочую задачу или сложность.",
+              "messages": null
+            },
+            {
+              "id": "695a74667822ec0006e27383",
+              "name": "Нет конкретного случая",
+              "variables": [],
+              "description": "Не удалось выделить конкретный рабочий случай — требуется уточнение.",
+              "messages": null
+            }
+          ],
+          "flowTools": [],
+          "buttonTool": null,
+          "description": null,
+          "carouselTool": null,
+          "instructions": "Проанализируй полученный скриншот/фото/PDF: выясни, к какому рабочему процессу он относится, что в нём неудобно, какой момент вызывает напряжение. Верни результат в виде JSON с флагом наличия конкретного случая и кратким резюме ситуации.",
+          "functionTools": [],
+          "webSearchTool": null,
+          "callForwardTool": null,
+          "integrationTools": [],
+          "knowledgeBaseTool": null,
+          "mcpIntegrationTools": []
+        },
+        "695a74667822ec0006e27373": {
+          "name": "Анализ описания ситуации",
+          "settings": {
+            "model": "claude-4-sonnet",
+            "maxTokens": 5000,
+            "temperature": 0.3,
+            "reasoningEffort": null
+          },
+          "cardTool": null,
+          "apiTools": [],
+          "pathTools": [
+            {
+              "id": "695a74667822ec0006e27384",
+              "name": "Есть конкретный рабочий случай",
+              "variables": [],
+              "description": "По описанию удалось выделить конкретную рабочую задачу или сложность.",
+              "messages": null
+            },
+            {
+              "id": "695a74667822ec0006e27385",
+              "name": "Нет конкретного случая",
+              "variables": [],
+              "description": "Не удалось выделить конкретную рабочую ситуацию — требуется уточнить.",
+              "messages": null
+            }
+          ],
+          "flowTools": [],
+          "buttonTool": null,
+          "description": null,
+          "carouselTool": null,
+          "instructions": "Проанализируй описание ситуации; определи, содержится ли в нём конкретная рабочая проблема, и в чём она заключается. Верни результат как JSON с флагом наличия случая и кратким резюме сути.",
+          "functionTools": [],
+          "webSearchTool": null,
+          "callForwardTool": null,
+          "integrationTools": [],
+          "knowledgeBaseTool": null,
+          "mcpIntegrationTools": []
+        },
+        "695a74667822ec0006e27374": {
+          "name": "Уточнение конкретного момента работы",
+          "settings": {
+            "model": "claude-4-sonnet",
+            "maxTokens": 5000,
+            "temperature": 0.3,
+            "reasoningEffort": null
+          },
+          "cardTool": null,
+          "apiTools": [],
+          "pathTools": [
+            {
+              "id": "695a74667822ec0006e27386",
+              "name": "Удалось сформулировать конкретный случай",
+              "variables": [],
+              "description": "Пользователь конкретизировал ситуацию, и теперь удаётся её проанализировать.",
+              "messages": null
+            },
+            {
+              "id": "695a74667822ec0006e27387",
+              "name": "Не удаётся сформулировать рабочий случай",
+              "variables": [],
+              "description": "Даже после уточнения нет явной рабочей задачи — завершить мягко.",
+              "messages": null
+            }
+          ],
+          "flowTools": [],
+          "buttonTool": null,
+          "description": null,
+          "carouselTool": null,
+          "instructions": "Попроси пользователя конкретизировать, в каком именно моменте работы проявляется затруднение. После получения уточнения — повтори анализ (выбери подходящий способ). Если второй раз не удаётся определить рабочий случай — переходи к мягкому завершению.",
+          "functionTools": [],
+          "webSearchTool": null,
+          "callForwardTool": null,
+          "integrationTools": [],
+          "knowledgeBaseTool": null,
+          "mcpIntegrationTools": []
+        },
+        "695a74667822ec0006e27375": {
+          "name": "Проверка наличия case",
+          "settings": {
+            "model": "claude-4-sonnet",
+            "maxTokens": 5000,
+            "temperature": 0.3,
+            "reasoningEffort": null
+          },
+          "cardTool": null,
+          "apiTools": [],
+          "pathTools": [
+            {
+              "id": "695a74667822ec0006e27388",
+              "name": "Конкретный случай подтверждён",
+              "variables": [],
+              "description": "Переход к детализации момента процесса.",
+              "messages": null
+            },
+            {
+              "id": "695a74667822ec0006e27389",
+              "name": "Необходимо дополнительное уточнение",
+              "variables": [],
+              "description": "Запрошено дополнительное уточнение рабочего случая.",
+              "messages": null
+            }
+          ],
+          "flowTools": [],
+          "buttonTool": null,
+          "description": null,
+          "carouselTool": null,
+          "instructions": "Проверь результат анализа: если есть конкретный рабочий случай — продолжи; если нет — направь на уточнение.",
+          "functionTools": [],
+          "webSearchTool": null,
+          "callForwardTool": null,
+          "integrationTools": [],
+          "knowledgeBaseTool": null,
+          "mcpIntegrationTools": []
+        },
+        "695a74667822ec0006e27376": {
+          "name": "Определение момента процесса и задачи",
+          "settings": {
+            "model": "claude-4-sonnet",
+            "maxTokens": 5000,
+            "temperature": 0.3,
+            "reasoningEffort": null
+          },
+          "cardTool": null,
+          "apiTools": [],
+          "pathTools": [
+            {
+              "id": "695a74667822ec0006e2738a",
+              "name": "Сложность носит регулярный характер",
+              "variables": [],
+              "description": "Проблемная ситуация повторяется регулярно.",
+              "messages": null
+            },
+            {
+              "id": "695a74667822ec0006e2738b",
+              "name": "Сложность не повторяется регулярно",
+              "variables": [],
+              "description": "Проблема нерегулярная — завершить мягко.",
+              "messages": null
+            }
+          ],
+          "flowTools": [],
+          "buttonTool": null,
+          "description": null,
+          "carouselTool": null,
+          "instructions": "Спроси, на каком этапе работы возникает сложность (до, во время или после контакта с пациентом, администратирование, принятие решения). Затем уточни, что именно пользователь пытается сделать или понять в этот момент. Уточни, регулярно ли проблема повторяется.",
+          "functionTools": [],
+          "webSearchTool": null,
+          "callForwardTool": null,
+          "integrationTools": [],
+          "knowledgeBaseTool": null,
+          "mcpIntegrationTools": []
+        },
+        "695a74667822ec0006e27377": {
+          "name": "Потери и текущее решение",
+          "settings": {
+            "model": "claude-4-sonnet",
+            "maxTokens": 5000,
+            "temperature": 0.3,
+            "reasoningEffort": null
+          },
+          "cardTool": null,
+          "apiTools": [],
+          "pathTools": [
+            {
+              "id": "695a74667822ec0006e2738c",
+              "name": "Потери значимы, нужна проработка",
+              "variables": [],
+              "description": "Выявлены ощутимые потери, требуется проработать решение.",
+              "messages": null
+            },
+            {
+              "id": "695a74667822ec0006e2738d",
+              "name": "Потери не значимы или решение устраивает",
+              "variables": [],
+              "description": "Потери не критичны или пользователя устраивает текущее решение.",
+              "messages": null
+            }
+          ],
+          "flowTools": [],
+          "buttonTool": null,
+          "description": null,
+          "carouselTool": null,
+          "instructions": "Уточни, к каким потерям (время, деньги, уверенность, качество работы, спокойствие) приводит эта проблема, можно ли выбрать несколько. Спроси, как сейчас пользователь справляется с этой ситуацией. Оцени, значимы ли потери и устраивает ли текущее решение.",
+          "functionTools": [],
+          "webSearchTool": null,
+          "callForwardTool": null,
+          "integrationTools": [],
+          "knowledgeBaseTool": null,
+          "mcpIntegrationTools": []
+        },
+        "695a74667822ec0006e27378": {
+          "name": "Финальный черновик инструмента",
+          "settings": {
+            "model": "claude-4-sonnet",
+            "maxTokens": 5000,
+            "temperature": 0.3,
+            "reasoningEffort": null
+          },
+          "cardTool": null,
+          "apiTools": [],
+          "pathTools": [
+            {
+              "id": "695a74667822ec0006e2738e",
+              "name": "Черновик согласован или отправлен на уточнение",
+              "variables": [],
+              "description": "Пользователь уточнил или согласовал черновик. Завершить кастдев.",
+              "messages": null
+            }
+          ],
+          "flowTools": [],
+          "buttonTool": null,
+          "description": null,
+          "carouselTool": null,
+          "instructions": "На основе всего предыдущего диалога (и файлов, если были), сформулируй черновое описание:\n— в какой рабочей ситуации возникает сложность\n— что именно сейчас не работает\n— какую задачу специалист пытается решить\n— какой цифровой инструмент мог бы здесь помогать\n— какие границы ответственности остаются за специалистом\n\nЗапрещено: медицинские рекомендации, клинические выводы, слова «фича», «продукт», «стартап», «платформа», «ИИ». Покажи черновик пользователю и предложи уточнить.",
+          "functionTools": [],
+          "webSearchTool": null,
+          "callForwardTool": null,
+          "integrationTools": [],
+          "knowledgeBaseTool": null,
+          "mcpIntegrationTools": []
+        },
+        "695a74667822ec0006e27379": {
+          "name": "Мягкое завершение",
+          "settings": {
+            "model": "claude-4-sonnet",
+            "maxTokens": 5000,
+            "temperature": 0.3,
+            "reasoningEffort": null
+          },
+          "cardTool": null,
+          "apiTools": [],
+          "pathTools": [],
+          "flowTools": [],
+          "buttonTool": null,
+          "description": null,
+          "carouselTool": null,
+          "instructions": "Поблагодари собеседника, скажи, что его комментарии были полезны, этого достаточно для фиксации общего контекста. Предложи вернуться позже при появлении более конкретной ситуации.",
+          "functionTools": [],
+          "webSearchTool": null,
+          "callForwardTool": null,
+          "integrationTools": [],
+          "knowledgeBaseTool": null,
+          "mcpIntegrationTools": []
+        },
+        "695a74667822ec0006e2737a": {
+          "name": "Успешный кастдев",
+          "settings": {
+            "model": "claude-4-sonnet",
+            "maxTokens": 5000,
+            "temperature": 0.3,
+            "reasoningEffort": null
+          },
+          "cardTool": null,
+          "apiTools": [],
+          "pathTools": [],
+          "flowTools": [],
+          "buttonTool": null,
+          "description": null,
+          "carouselTool": null,
+          "instructions": "Поблагодари пользователя за подробный разговор и подчеркни, насколько это помогает понять реальные рабочие процессы.",
+          "functionTools": [],
+          "webSearchTool": null,
+          "callForwardTool": null,
+          "integrationTools": [],
+          "knowledgeBaseTool": null,
+          "mcpIntegrationTools": []
+        }
+      },
+      "prompts": {},
+      "apiTools": {},
+      "messages": {},
+      "globalPrompts": null,
+      "integrationTools": {},
+      "mcpIntegrationTools": {}
+    },
+    "prototype": {
+      "type": "chat",
+      "data": {
+        "name": "cust_dev_7",
+        "locales": [
+          "en-US"
+        ]
+      },
+      "model": {
+        "intents": [],
+        "slots": []
+      },
+      "context": {
+        "stack": [
+          {
+            "diagramID": "695a74667822ec0006e2738f",
+            "storage": {},
+            "variables": {}
+          }
+        ],
+        "variables": {}
+      },
+      "surveyorContext": {
+        "platform": "webchat",
+        "slotsMap": {},
+        "extraSlots": [],
+        "cmsEntities": {},
+        "extraIntents": [],
+        "cmsVariables": {
+          "sessions": {
+            "isSystem": true,
+            "description": "The number of times a particular user has opened the app.",
+            "defaultValue": null
+          },
+          "user_id": {
+            "isSystem": true,
+            "description": "The user's unique ID.",
+            "defaultValue": null
+          },
+          "timestamp": {
+            "isSystem": true,
+            "description": "UNIX timestamp (number of seconds since January 1st, 1970 at UTC).",
+            "defaultValue": null
+          },
+          "platform": {
+            "isSystem": true,
+            "description": "The platform your agent is running on (e.g. \"voiceflow\").",
+            "defaultValue": null
+          },
+          "locale": {
+            "isSystem": true,
+            "description": "The locale of the user (eg. en-US, en-CA, it-IT, fr-FR, ...).",
+            "defaultValue": null
+          },
+          "intent_confidence": {
+            "isSystem": true,
+            "description": "The confidence interval (measured as a value from 0 to 100) for the most recently matched intent.",
+            "defaultValue": null
+          },
+          "last_response": {
+            "isSystem": true,
+            "description": "The agent's last response (text/speak) in a string.",
+            "defaultValue": null
+          },
+          "last_event": {
+            "isSystem": true,
+            "description": "The object containing the last event that the user client has triggered.",
+            "defaultValue": null
+          },
+          "last_utterance": {
+            "isSystem": true,
+            "description": "The user's last utterance in a text string.",
+            "defaultValue": null
+          },
+          "vf_memory": {
+            "isSystem": true,
+            "description": "Last 10 user inputs and agent responses in a string (e.g. \"agent: How can i help?\"\nuser: What's the weather today?).",
+            "defaultValue": null
+          },
+          "vf_date": {
+            "isSystem": true,
+            "description": "Current date in the format \"Jan 1, 2025\". You can modify the timezone in project settings.",
+            "defaultValue": null
+          },
+          "vf_time": {
+            "isSystem": true,
+            "description": "Current time in the format \"16:37\". You can modify the timezone in project settings.",
+            "defaultValue": null
+          },
+          "vf_day": {
+            "isSystem": true,
+            "description": "Current day of month in the format \"1\". You can modify the timezone in project settings.",
+            "defaultValue": null
+          },
+          "vf_month": {
+            "isSystem": true,
+            "description": "Current month in the format \"January\". You can modify the timezone in project settings.",
+            "defaultValue": null
+          },
+          "vf_year": {
+            "isSystem": true,
+            "description": "Current year in the format \"2025\". You can modify the timezone in project settings.",
+            "defaultValue": null
+          },
+          "vf_now": {
+            "isSystem": true,
+            "description": "Current date and time in the format \"Jan 1, 2025, 16:37\". You can modify the timezone in project settings.",
+            "defaultValue": null
+          },
+          "vf_user_timezone": {
+            "isSystem": true,
+            "description": "The user's timezone in the format \"America/Toronto\", if available. Defaults to the project timezone.",
+            "defaultValue": null
+          }
+        },
+        "usedIntentsSet": [],
+        "functionDefinitions": {},
+        "referencedAgentsIDs": [
+          "695a74667822ec0006e2736e",
+          "695a74667822ec0006e2736f",
+          "695a74667822ec0006e27370",
+          "695a74667822ec0006e27371",
+          "695a74667822ec0006e27372",
+          "695a74667822ec0006e27373",
+          "695a74667822ec0006e27374",
+          "695a74667822ec0006e27375",
+          "695a74667822ec0006e27376",
+          "695a74667822ec0006e27377",
+          "695a74667822ec0006e27378",
+          "695a74667822ec0006e27379",
+          "695a74667822ec0006e2737a"
+        ],
+        "referencedPromptIDs": [],
+        "referencedAPIToolIDs": [],
+        "referencedResponseIDs": [],
+        "referencedIntegrationToolIDs": [],
+        "referencedMCPIntegrationToolIDs": [],
+        "interfaces": [],
+        "permissions": [],
+        "usedEventsSet": [],
+        "goToIntentsSet": []
+      },
+      "settings": {},
+      "platform": "webchat"
+    },
+    "settings": {
+      "voice": {
+        "stt": {
+          "provider": "deepgram",
+          "model": "flux",
+          "locale": "en",
+          "punctuationWaitMS": 200,
+          "partialWaitMS": 1000,
+          "silenceWaitMS": 10,
+          "interruptionWaitWords": 1
+        },
+        "tts": {
+          "provider": "cartesia",
+          "model": "sonic-3",
+          "voice": "829ccd10-f8b3-43cd-b8a0-4aeaa81f3b30",
+          "settings": {
+            "speed": 1
+          }
+        },
+        "failureMessage": "We’re sorry, but the call cannot be completed at this time. Please try again later.",
+        "hasCallRecording": true,
+        "audioSync": false
+      },
+      "widget": {
+        "type": "chat",
+        "chat": {
+          "renderMode": "widget",
+          "headerImage": {
+            "enabled": true
+          },
+          "agentImage": {
+            "enabled": false
+          },
+          "banner": {
+            "title": "Your AI agent",
+            "description": "How can I help you today?",
+            "enabled": true
+          },
+          "placeholderText": "Message...",
+          "disclaimer": {
+            "enabled": false,
+            "title": "Privacy notice",
+            "description": "Before we can proceed with your conversation, we kindly ask you to review and accept our privacy policy, outlining how we handle and protect your personal information throughout our services.",
+            "primaryButtonText": "Submit",
+            "secondaryButtonText": "Privacy policy",
+            "secondaryButtonURL": ""
+          },
+          "aiDisclaimer": {
+            "text": "Generated by AI, double-check for accuracy.",
+            "enabled": false
+          },
+          "handoffToAgentImageURL": "",
+          "voiceInput": true,
+          "voiceOutput": true,
+          "voiceMode": true
+        },
+        "voice": {
+          "renderMode": "full",
+          "content": {
+            "talkingText": "Talk to interrupt",
+            "endButtonText": "End",
+            "listeningText": "Listening...",
+            "startButtonText": "Start a call",
+            "callToActionText": "How can I help you?"
+          }
+        },
+        "common": {
+          "sideSpacing": "20",
+          "bottomSpacing": "20",
+          "position": "right",
+          "fontFamily": "UCity Pro",
+          "primaryColor": {
+            "color": "#397DFF",
+            "palette": {
+              "50": "#E7F5FD",
+              "100": "#C6E4FB",
+              "200": "#A2D2FA",
+              "300": "#87BFFB",
+              "400": "#659FFD",
+              "500": "#397DFF",
+              "600": "#2F68DB",
+              "700": "#264EB4",
+              "800": "#1C368E",
+              "900": "#0F1E61"
+            }
+          },
+          "poweredBy": true,
+          "launcher": {
+            "type": "both",
+            "text": "Test your agent"
+          },
+          "footerLink": {
+            "enabled": false
+          },
+          "persistence": "localStorage"
+        },
+        "security": {
+          "approvedDomains": {
+            "enabled": false,
+            "domains": ""
+          },
+          "disableTranscript": false
+        }
+      },
+      "memory": {
+        "turns": 50
+      },
+      "llmFallback": {
+        "models": {
+          "open-ai": {
+            "*": {
+              "provider": "anthropic",
+              "model": "claude-4-sonnet"
+            }
+          },
+          "anthropic": {
+            "*": {
+              "provider": "open-ai",
+              "model": "gpt-4.1-2025-04-14"
+            }
+          },
+          "groq": {
+            "*": {
+              "provider": "anthropic",
+              "model": "claude-4-sonnet"
+            }
+          },
+          "google": {
+            "*": {
+              "provider": "anthropic",
+              "model": "claude-4-sonnet"
+            }
+          }
+        }
+      },
+      "globalNoMatch": {
+        "type": "static",
+        "prompt": [
+          {
+            "text": [
+              "Sorry, I didn’t get that. Please try again."
+            ]
+          }
+        ]
+      },
+      "intentClassification": {
+        "type": "rag",
+        "params": {
+          "model": "claude-3.5-haiku",
+          "temperature": 0.1
+        },
+        "promptWrapper": null
+      }
+    },
+    "topics": [
+      {
+        "type": "DIAGRAM",
+        "sourceID": "64dbb6696a8fab0013dba194"
+      }
+    ],
+    "variables": [
+      "sessions",
+      "user_id",
+      "timestamp",
+      "platform",
+      "locale",
+      "intent_confidence",
+      "last_response",
+      "last_event",
+      "last_utterance",
+      "vf_memory",
+      "vf_date",
+      "vf_time",
+      "vf_day",
+      "vf_month",
+      "vf_year",
+      "vf_now",
+      "vf_user_timezone"
+    ],
+    "_id": "695a7466287004b4a28c06db",
+    "updatedAt": "2026-01-04T14:08:40.140Z",
+    "publishedAt": "2024-09-27T16:54:27.996Z",
+    "domains": [
+      {
+        "id": "cla06iyr900b206pkh8d4ap8n",
+        "name": "Home",
+        "live": true,
+        "topicIDs": [
+          "64dbb6696a8fab0013dba194"
+        ],
+        "rootDiagramID": "64dbb6696a8fab0013dba194",
+        "updatedBy": 1907896,
+        "updatedAt": "2026-01-04T14:08:38.305Z"
+      }
+    ],
+    "projectID": "695a7466287004b4a28c06da",
+    "rootDiagramID": "695a74667822ec0006e2738f",
+    "templateDiagramID": "64dbb6696a8fab0013dba195"
+  },
+  "diagrams": {
+    "695a74667822ec0006e2738f": {
+      "name": "cust_dev_7",
+      "type": "TOPIC",
+      "zoom": 100,
+      "nodes": {
+        "695a74457822ec0006e2734d": {
+          "nodeID": "695a74457822ec0006e2734d",
+          "type": "start",
+          "data": {
+            "name": "Start",
+            "color": "#56b365",
+            "triggers": [],
+            "description": null,
+            "portsV2": {
+              "byKey": {},
+              "builtIn": {
+                "next": {
+                  "id": "695a74457822ec0006e2734e",
+                  "type": "next",
+                  "data": {},
+                  "target": "cmjzt4ork39370606e7jx3dcm"
+                }
+              },
+              "dynamic": []
+            },
+            "steps": []
+          },
+          "coords": [
+            0,
+            0
+          ]
+        },
+        "cmjzt4orl393k0606c2b41h9j": {
+          "type": "agent",
+          "nodeID": "cmjzt4orl393k0606c2b41h9j",
+          "data": {
+            "agentID": "695a74667822ec0006e2736e",
+            "listenForOtherTriggers": false,
+            "exitEveryConversationalTurn": false,
+            "portsV2": {
+              "byKey": {
+                "695a74667822ec0006e2737b": {
+                  "id": "695a74667822ec0006e2737b",
+                  "type": "",
+                  "data": {
+                    "points": [
+                      {
+                        "point": [
+                          596,
+                          198
+                        ]
+                      },
+                      {
+                        "point": [
+                          645.5,
+                          198
+                        ]
+                      },
+                      {
+                        "point": [
+                          645.5,
+                          27
+                        ]
+                      },
+                      {
+                        "point": [
+                          695,
+                          27
+                        ],
+                        "allowedToTop": true
+                      }
+                    ]
+                  },
+                  "target": "cmjzt4ork39380606198y2hij"
+                },
+                "695a74667822ec0006e2737c": {
+                  "id": "695a74667822ec0006e2737c",
+                  "type": "",
+                  "data": {
+                    "points": [
+                      {
+                        "point": [
+                          596,
+                          252
+                        ]
+                      },
+                      {
+                        "point": [
+                          645.5,
+                          252
+                        ]
+                      },
+                      {
+                        "point": [
+                          645.5,
+                          357
+                        ]
+                      },
+                      {
+                        "point": [
+                          695,
+                          357
+                        ],
+                        "allowedToTop": true
+                      }
+                    ]
+                  },
+                  "target": "cmjzt4orl393i060631ctcmoy"
+                }
+              },
+              "builtIn": {},
+              "dynamic": []
+            }
+          },
+          "coords": [
+            0,
+            0
+          ]
+        },
+        "cmjzt4orl393l0606dks06p51": {
+          "type": "agent",
+          "nodeID": "cmjzt4orl393l0606dks06p51",
+          "data": {
+            "agentID": "695a74667822ec0006e2736f",
+            "listenForOtherTriggers": false,
+            "exitEveryConversationalTurn": false,
+            "portsV2": {
+              "byKey": {
+                "695a74667822ec0006e2737d": {
+                  "id": "695a74667822ec0006e2737d",
+                  "type": "",
+                  "data": {},
+                  "target": "cmjzt4ork39390606g6x0em0k"
+                },
+                "695a74667822ec0006e2737e": {
+                  "id": "695a74667822ec0006e2737e",
+                  "type": "",
+                  "data": {},
+                  "target": "cmjzt4orl393i060631ctcmoy"
+                }
+              },
+              "builtIn": {},
+              "dynamic": []
+            }
+          }
+        },
+        "cmjzt4orl393m06068m74ehpw": {
+          "type": "agent",
+          "nodeID": "cmjzt4orl393m06068m74ehpw",
+          "data": {
+            "agentID": "695a74667822ec0006e27370",
+            "listenForOtherTriggers": false,
+            "exitEveryConversationalTurn": false,
+            "portsV2": {
+              "byKey": {
+                "695a74667822ec0006e2737f": {
+                  "id": "695a74667822ec0006e2737f",
+                  "type": "",
+                  "data": {},
+                  "target": "cmjzt4ork393a0606b4r4ff8j"
+                }
+              },
+              "builtIn": {},
+              "dynamic": []
+            }
+          }
+        },
+        "cmjzt4orl393n06068js72iay": {
+          "type": "agent",
+          "nodeID": "cmjzt4orl393n06068js72iay",
+          "data": {
+            "agentID": "695a74667822ec0006e27371",
+            "listenForOtherTriggers": false,
+            "exitEveryConversationalTurn": false,
+            "portsV2": {
+              "byKey": {
+                "695a74667822ec0006e27380": {
+                  "id": "695a74667822ec0006e27380",
+                  "type": "",
+                  "data": {},
+                  "target": "cmjzt4ork393b06067lxxfj1l"
+                },
+                "695a74667822ec0006e27381": {
+                  "id": "695a74667822ec0006e27381",
+                  "type": "",
+                  "data": {},
+                  "target": "cmjzt4ork393c0606g46p59v7"
+                }
+              },
+              "builtIn": {},
+              "dynamic": []
+            }
+          }
+        },
+        "cmjzt4orl393o0606al1o48tx": {
+          "type": "agent",
+          "nodeID": "cmjzt4orl393o0606al1o48tx",
+          "data": {
+            "agentID": "695a74667822ec0006e27372",
+            "listenForOtherTriggers": false,
+            "exitEveryConversationalTurn": false,
+            "portsV2": {
+              "byKey": {
+                "695a74667822ec0006e27382": {
+                  "id": "695a74667822ec0006e27382",
+                  "type": "",
+                  "data": {},
+                  "target": "cmjzt4ork393e060620nu2qk8"
+                },
+                "695a74667822ec0006e27383": {
+                  "id": "695a74667822ec0006e27383",
+                  "type": "",
+                  "data": {},
+                  "target": "cmjzt4ork393d06067hphgv49"
+                }
+              },
+              "builtIn": {},
+              "dynamic": []
+            }
+          }
+        },
+        "cmjzt4orl393p0606a33gbbwe": {
+          "type": "agent",
+          "nodeID": "cmjzt4orl393p0606a33gbbwe",
+          "data": {
+            "agentID": "695a74667822ec0006e27373",
+            "listenForOtherTriggers": false,
+            "exitEveryConversationalTurn": false,
+            "portsV2": {
+              "byKey": {
+                "695a74667822ec0006e27384": {
+                  "id": "695a74667822ec0006e27384",
+                  "type": "",
+                  "data": {},
+                  "target": "cmjzt4ork393e060620nu2qk8"
+                },
+                "695a74667822ec0006e27385": {
+                  "id": "695a74667822ec0006e27385",
+                  "type": "",
+                  "data": {},
+                  "target": "cmjzt4ork393d06067hphgv49"
+                }
+              },
+              "builtIn": {},
+              "dynamic": []
+            }
+          }
+        },
+        "cmjzt4orl393q0606bnl5hz34": {
+          "type": "agent",
+          "nodeID": "cmjzt4orl393q0606bnl5hz34",
+          "data": {
+            "agentID": "695a74667822ec0006e27374",
+            "listenForOtherTriggers": false,
+            "exitEveryConversationalTurn": false,
+            "portsV2": {
+              "byKey": {
+                "695a74667822ec0006e27386": {
+                  "id": "695a74667822ec0006e27386",
+                  "type": "",
+                  "data": {},
+                  "target": "cmjzt4ork393e060620nu2qk8"
+                },
+                "695a74667822ec0006e27387": {
+                  "id": "695a74667822ec0006e27387",
+                  "type": "",
+                  "data": {},
+                  "target": "cmjzt4orl393i060631ctcmoy"
+                }
+              },
+              "builtIn": {},
+              "dynamic": []
+            }
+          }
+        },
+        "cmjzt4orl393r0606cg38bpgh": {
+          "type": "agent",
+          "nodeID": "cmjzt4orl393r0606cg38bpgh",
+          "data": {
+            "agentID": "695a74667822ec0006e27375",
+            "listenForOtherTriggers": false,
+            "exitEveryConversationalTurn": false,
+            "portsV2": {
+              "byKey": {
+                "695a74667822ec0006e27388": {
+                  "id": "695a74667822ec0006e27388",
+                  "type": "",
+                  "data": {},
+                  "target": "cmjzt4ork393f0606di6gc4rm"
+                },
+                "695a74667822ec0006e27389": {
+                  "id": "695a74667822ec0006e27389",
+                  "type": "",
+                  "data": {},
+                  "target": "cmjzt4ork393d06067hphgv49"
+                }
+              },
+              "builtIn": {},
+              "dynamic": []
+            }
+          }
+        },
+        "cmjzt4orl393s060663yihaw0": {
+          "type": "agent",
+          "nodeID": "cmjzt4orl393s060663yihaw0",
+          "data": {
+            "agentID": "695a74667822ec0006e27376",
+            "listenForOtherTriggers": false,
+            "exitEveryConversationalTurn": false,
+            "portsV2": {
+              "byKey": {
+                "695a74667822ec0006e2738a": {
+                  "id": "695a74667822ec0006e2738a",
+                  "type": "",
+                  "data": {},
+                  "target": "cmjzt4ork393g06066qjz7vhp"
+                },
+                "695a74667822ec0006e2738b": {
+                  "id": "695a74667822ec0006e2738b",
+                  "type": "",
+                  "data": {},
+                  "target": "cmjzt4orl393i060631ctcmoy"
+                }
+              },
+              "builtIn": {},
+              "dynamic": []
+            }
+          }
+        },
+        "cmjzt4orl393t0606bck3792z": {
+          "type": "agent",
+          "nodeID": "cmjzt4orl393t0606bck3792z",
+          "data": {
+            "agentID": "695a74667822ec0006e27377",
+            "listenForOtherTriggers": false,
+            "exitEveryConversationalTurn": false,
+            "portsV2": {
+              "byKey": {
+                "695a74667822ec0006e2738c": {
+                  "id": "695a74667822ec0006e2738c",
+                  "type": "",
+                  "data": {},
+                  "target": "cmjzt4ork393h06068qk65wm2"
+                },
+                "695a74667822ec0006e2738d": {
+                  "id": "695a74667822ec0006e2738d",
+                  "type": "",
+                  "data": {},
+                  "target": "cmjzt4orl393i060631ctcmoy"
+                }
+              },
+              "builtIn": {},
+              "dynamic": []
+            }
+          }
+        },
+        "cmjzt4orl393u060649nsej7l": {
+          "type": "agent",
+          "nodeID": "cmjzt4orl393u060649nsej7l",
+          "data": {
+            "agentID": "695a74667822ec0006e27378",
+            "listenForOtherTriggers": false,
+            "exitEveryConversationalTurn": false,
+            "portsV2": {
+              "byKey": {
+                "695a74667822ec0006e2738e": {
+                  "id": "695a74667822ec0006e2738e",
+                  "type": "",
+                  "data": {},
+                  "target": "cmjzt4orl393j0606fh8g51ql"
+                }
+              },
+              "builtIn": {},
+              "dynamic": []
+            }
+          }
+        },
+        "cmjzt4orl393v060633fk1zl6": {
+          "type": "agent",
+          "nodeID": "cmjzt4orl393v060633fk1zl6",
+          "data": {
+            "agentID": "695a74667822ec0006e27379",
+            "listenForOtherTriggers": false,
+            "exitEveryConversationalTurn": false,
+            "portsV2": {
+              "byKey": {},
+              "builtIn": {},
+              "dynamic": []
+            }
+          }
+        },
+        "cmjzt4orl393w0606cn8s8awh": {
+          "type": "agent",
+          "nodeID": "cmjzt4orl393w0606cn8s8awh",
+          "data": {
+            "agentID": "695a74667822ec0006e2737a",
+            "listenForOtherTriggers": false,
+            "exitEveryConversationalTurn": false,
+            "portsV2": {
+              "byKey": {},
+              "builtIn": {},
+              "dynamic": []
+            }
+          }
+        },
+        "cmjzt4ork39370606e7jx3dcm": {
+          "type": "block",
+          "coords": [
+            430,
+            0
+          ],
+          "nodeID": "cmjzt4ork39370606e7jx3dcm",
+          "data": {
+            "name": "Приветствие и рамка",
+            "color": "#A1ADBA",
+            "steps": [
+              "cmjzt4orl393k0606c2b41h9j"
+            ],
+            "portsV2": {
+              "byKey": {},
+              "builtIn": {},
+              "dynamic": []
+            }
+          }
+        },
+        "cmjzt4ork39380606198y2hij": {
+          "type": "block",
+          "coords": [
+            860,
+            0
+          ],
+          "nodeID": "cmjzt4ork39380606198y2hij",
+          "data": {
+            "name": "Быстрый фильтр: подтверждение сферы",
+            "color": "#A1ADBA",
+            "steps": [
+              "cmjzt4orl393l0606dks06p51"
+            ],
+            "portsV2": {
+              "byKey": {},
+              "builtIn": {},
+              "dynamic": []
+            }
+          }
+        },
+        "cmjzt4ork39390606g6x0em0k": {
+          "type": "block",
+          "coords": [
+            1290,
+            0
+          ],
+          "nodeID": "cmjzt4ork39390606g6x0em0k",
+          "data": {
+            "name": "Выбор категории сложности и режима входа",
+            "color": "#A1ADBA",
+            "steps": [
+              "cmjzt4orl393m06068m74ehpw"
+            ],
+            "portsV2": {
+              "byKey": {},
+              "builtIn": {},
+              "dynamic": []
+            }
+          }
+        },
+        "cmjzt4ork393a0606b4r4ff8j": {
+          "type": "block",
+          "coords": [
+            1720,
+            0
+          ],
+          "nodeID": "cmjzt4ork393a0606b4r4ff8j",
+          "data": {
+            "name": "Описание ситуации или идеи",
+            "color": "#A1ADBA",
+            "steps": [
+              "cmjzt4orl393n06068js72iay"
+            ],
+            "portsV2": {
+              "byKey": {},
+              "builtIn": {},
+              "dynamic": []
+            }
+          }
+        },
+        "cmjzt4ork393b06067lxxfj1l": {
+          "type": "block",
+          "coords": [
+            2150,
+            0
+          ],
+          "nodeID": "cmjzt4ork393b06067lxxfj1l",
+          "data": {
+            "name": "Анализ файла",
+            "color": "#5b9fd7",
+            "steps": [
+              "cmjzt4orl393o0606al1o48tx"
+            ],
+            "portsV2": {
+              "byKey": {},
+              "builtIn": {},
+              "dynamic": []
+            }
+          }
+        },
+        "cmjzt4ork393c0606g46p59v7": {
+          "type": "block",
+          "coords": [
+            2150,
+            330
+          ],
+          "nodeID": "cmjzt4ork393c0606g46p59v7",
+          "data": {
+            "name": "Анализ описания ситуации",
+            "color": "#5b9fd7",
+            "steps": [
+              "cmjzt4orl393p0606a33gbbwe"
+            ],
+            "portsV2": {
+              "byKey": {},
+              "builtIn": {},
+              "dynamic": []
+            }
+          }
+        },
+        "cmjzt4ork393d06067hphgv49": {
+          "type": "block",
+          "coords": [
+            2580,
+            0
+          ],
+          "nodeID": "cmjzt4ork393d06067hphgv49",
+          "data": {
+            "name": "Уточнение конкретного момента работы",
+            "color": "#5b9fd7",
+            "steps": [
+              "cmjzt4orl393q0606bnl5hz34"
+            ],
+            "portsV2": {
+              "byKey": {},
+              "builtIn": {},
+              "dynamic": []
+            }
+          }
+        },
+        "cmjzt4ork393e060620nu2qk8": {
+          "type": "block",
+          "coords": [
+            2580,
+            330
+          ],
+          "nodeID": "cmjzt4ork393e060620nu2qk8",
+          "data": {
+            "name": "Проверка наличия case",
+            "color": "#A1ADBA",
+            "steps": [
+              "cmjzt4orl393r0606cg38bpgh"
+            ],
+            "portsV2": {
+              "byKey": {},
+              "builtIn": {},
+              "dynamic": []
+            }
+          }
+        },
+        "cmjzt4ork393f0606di6gc4rm": {
+          "type": "block",
+          "coords": [
+            3010,
+            0
+          ],
+          "nodeID": "cmjzt4ork393f0606di6gc4rm",
+          "data": {
+            "name": "Определение момента процесса и задачи",
+            "color": "#5b9fd7",
+            "steps": [
+              "cmjzt4orl393s060663yihaw0"
+            ],
+            "portsV2": {
+              "byKey": {},
+              "builtIn": {},
+              "dynamic": []
+            }
+          }
+        },
+        "cmjzt4ork393g06066qjz7vhp": {
+          "type": "block",
+          "coords": [
+            3440,
+            0
+          ],
+          "nodeID": "cmjzt4ork393g06066qjz7vhp",
+          "data": {
+            "name": "Потери и текущее решение",
+            "color": "#5b9fd7",
+            "steps": [
+              "cmjzt4orl393t0606bck3792z"
+            ],
+            "portsV2": {
+              "byKey": {},
+              "builtIn": {},
+              "dynamic": []
+            }
+          }
+        },
+        "cmjzt4ork393h06068qk65wm2": {
+          "type": "block",
+          "coords": [
+            3870,
+            0
+          ],
+          "nodeID": "cmjzt4ork393h06068qk65wm2",
+          "data": {
+            "name": "Финальный черновик инструмента",
+            "color": "#56b365",
+            "steps": [
+              "cmjzt4orl393u060649nsej7l"
+            ],
+            "portsV2": {
+              "byKey": {},
+              "builtIn": {},
+              "dynamic": []
+            }
+          }
+        },
+        "cmjzt4orl393i060631ctcmoy": {
+          "type": "block",
+          "coords": [
+            860,
+            330
+          ],
+          "nodeID": "cmjzt4orl393i060631ctcmoy",
+          "data": {
+            "name": "Мягкое завершение",
+            "color": "#CB627B",
+            "steps": [
+              "cmjzt4orl393v060633fk1zl6"
+            ],
+            "portsV2": {
+              "byKey": {},
+              "builtIn": {},
+              "dynamic": []
+            }
+          }
+        },
+        "cmjzt4orl393j0606fh8g51ql": {
+          "type": "block",
+          "coords": [
+            4300,
+            0
+          ],
+          "nodeID": "cmjzt4orl393j0606fh8g51ql",
+          "data": {
+            "name": "Успешный кастдев",
+            "color": "#56b365",
+            "steps": [
+              "cmjzt4orl393w0606cn8s8awh"
+            ],
+            "portsV2": {
+              "byKey": {},
+              "builtIn": {},
+              "dynamic": []
+            }
+          }
+        }
+      },
+      "offsetX": 560,
+      "offsetY": 300,
+      "modified": 1767535685,
+      "variables": [],
+      "creatorID": 1907896,
+      "_id": "695a7466287004b4a28c06dd",
+      "diagramID": "695a74667822ec0006e2738f",
+      "versionID": "695a7466287004b4a28c06db"
+    }
+  },
+  "flows": [],
+  "entities": [],
+  "entityVariants": [],
+  "intents": [
+    {
+      "id": "None",
+      "name": "None",
+      "createdByID": 1907896,
+      "folderID": null,
+      "description": null,
+      "automaticReprompt": false,
+      "entityOrder": [],
+      "automaticRepromptSettings": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    }
+  ],
+  "utterances": [],
+  "requiredEntities": [],
+  "folders": [],
+  "responses": [],
+  "responseMessages": [],
+  "responseDiscriminators": [],
+  "variables": [
+    {
+      "id": "sessions",
+      "name": "sessions",
+      "createdByID": 1907896,
+      "folderID": null,
+      "color": "#515A63",
+      "isArray": false,
+      "isSystem": true,
+      "datatype": "number",
+      "description": "The number of times a particular user has opened the app.",
+      "defaultValue": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "user_id",
+      "name": "user_id",
+      "createdByID": 1907896,
+      "folderID": null,
+      "color": "#515A63",
+      "isArray": false,
+      "isSystem": true,
+      "datatype": "text",
+      "description": "The user's unique ID.",
+      "defaultValue": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "timestamp",
+      "name": "timestamp",
+      "createdByID": 1907896,
+      "folderID": null,
+      "color": "#515A63",
+      "isArray": false,
+      "isSystem": true,
+      "datatype": "text",
+      "description": "UNIX timestamp (number of seconds since January 1st, 1970 at UTC).",
+      "defaultValue": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "platform",
+      "name": "platform",
+      "createdByID": 1907896,
+      "folderID": null,
+      "color": "#515A63",
+      "isArray": false,
+      "isSystem": true,
+      "datatype": "text",
+      "description": "The platform your agent is running on (e.g. \"voiceflow\").",
+      "defaultValue": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "locale",
+      "name": "locale",
+      "createdByID": 1907896,
+      "folderID": null,
+      "color": "#515A63",
+      "isArray": false,
+      "isSystem": true,
+      "datatype": "text",
+      "description": "The locale of the user (eg. en-US, en-CA, it-IT, fr-FR, ...).",
+      "defaultValue": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "intent_confidence",
+      "name": "intent_confidence",
+      "createdByID": 1907896,
+      "folderID": null,
+      "color": "#515A63",
+      "isArray": false,
+      "isSystem": true,
+      "datatype": "number",
+      "description": "The confidence interval (measured as a value from 0 to 100) for the most recently matched intent.",
+      "defaultValue": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "last_response",
+      "name": "last_response",
+      "createdByID": 1907896,
+      "folderID": null,
+      "color": "#515A63",
+      "isArray": false,
+      "isSystem": true,
+      "datatype": "text",
+      "description": "The agent's last response (text/speak) in a string.",
+      "defaultValue": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "last_event",
+      "name": "last_event",
+      "createdByID": 1907896,
+      "folderID": null,
+      "color": "#515A63",
+      "isArray": false,
+      "isSystem": true,
+      "datatype": "any",
+      "description": "The object containing the last event that the user client has triggered.",
+      "defaultValue": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "last_utterance",
+      "name": "last_utterance",
+      "createdByID": 1907896,
+      "folderID": null,
+      "color": "#515A63",
+      "isArray": false,
+      "isSystem": true,
+      "datatype": "text",
+      "description": "The user's last utterance in a text string.",
+      "defaultValue": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "vf_memory",
+      "name": "vf_memory",
+      "createdByID": 1907896,
+      "folderID": null,
+      "color": "#515A63",
+      "isArray": false,
+      "isSystem": true,
+      "datatype": "text",
+      "description": "Last 10 user inputs and agent responses in a string (e.g. \"agent: How can i help?\"\nuser: What's the weather today?).",
+      "defaultValue": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "vf_date",
+      "name": "vf_date",
+      "createdByID": 1907896,
+      "folderID": null,
+      "color": "#515A63",
+      "isArray": false,
+      "isSystem": true,
+      "datatype": "date",
+      "description": "Current date in the format \"Jan 1, 2025\". You can modify the timezone in project settings.",
+      "defaultValue": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "vf_time",
+      "name": "vf_time",
+      "createdByID": 1907896,
+      "folderID": null,
+      "color": "#515A63",
+      "isArray": false,
+      "isSystem": true,
+      "datatype": "text",
+      "description": "Current time in the format \"16:37\". You can modify the timezone in project settings.",
+      "defaultValue": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "vf_day",
+      "name": "vf_day",
+      "createdByID": 1907896,
+      "folderID": null,
+      "color": "#515A63",
+      "isArray": false,
+      "isSystem": true,
+      "datatype": "number",
+      "description": "Current day of month in the format \"1\". You can modify the timezone in project settings.",
+      "defaultValue": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "vf_month",
+      "name": "vf_month",
+      "createdByID": 1907896,
+      "folderID": null,
+      "color": "#515A63",
+      "isArray": false,
+      "isSystem": true,
+      "datatype": "text",
+      "description": "Current month in the format \"January\". You can modify the timezone in project settings.",
+      "defaultValue": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "vf_year",
+      "name": "vf_year",
+      "createdByID": 1907896,
+      "folderID": null,
+      "color": "#515A63",
+      "isArray": false,
+      "isSystem": true,
+      "datatype": "number",
+      "description": "Current year in the format \"2025\". You can modify the timezone in project settings.",
+      "defaultValue": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "vf_now",
+      "name": "vf_now",
+      "createdByID": 1907896,
+      "folderID": null,
+      "color": "#515A63",
+      "isArray": false,
+      "isSystem": true,
+      "datatype": "date",
+      "description": "Current date and time in the format \"Jan 1, 2025, 16:37\". You can modify the timezone in project settings.",
+      "defaultValue": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "vf_user_timezone",
+      "name": "vf_user_timezone",
+      "createdByID": 1907896,
+      "folderID": null,
+      "color": "#515A63",
+      "isArray": false,
+      "isSystem": true,
+      "datatype": "text",
+      "description": "The user's timezone in the format \"America/Toronto\", if available. Defaults to the project timezone.",
+      "defaultValue": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    }
+  ],
+  "workflows": [
+    {
+      "id": "66df755be937eb000784abb2",
+      "name": "Start workflow",
+      "createdByID": 1907896,
+      "folderID": null,
+      "status": null,
+      "isStart": true,
+      "diagramID": "695a74667822ec0006e2738f",
+      "assigneeID": null,
+      "description": "",
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:10:55.000Z",
+      "updatedByID": 1907896
+    }
+  ],
+  "attachments": [],
+  "cardButtons": [],
+  "prompts": [],
+  "promptMessages": [],
+  "events": [],
+  "agents": [
+    {
+      "id": "695a74667822ec0006e2736e",
+      "name": "Приветствие и рамка",
+      "createdByID": 1907896,
+      "folderID": null,
+      "settings": {
+        "model": "gpt-5",
+        "maxTokens": 5000,
+        "temperature": 0.3,
+        "reasoningEffort": "medium"
+      },
+      "description": null,
+      "instructions": [
+        {
+          "text": [
+            "Поздоровайся с пользователем и очерти рамки диалога: объясни, что речь пойдёт о выявлении сложностей из практики, где цифровое решение облегчило бы работу. Подчеркни, что не нужно заранее формулировать проблему или решение. Сообщи, что возможно обсуждение процента от использования инструмента, который может появиться по итогам. Спроси, готов ли собеседник продолжить. Будь краток"
+          ]
+        },
+        {
+          "text": [
+            {
+              "text": [
+                ""
+              ]
+            }
+          ]
+        }
+      ],
+      "pathToolOrder": [
+        "695a74667822ec0006e2737b",
+        "695a74667822ec0006e2737c"
+      ],
+      "webSearchTool": null,
+      "knowledgeBaseTool": null,
+      "buttonTool": null,
+      "cardTool": null,
+      "carouselTool": null,
+      "callForwardTool": null,
+      "endTool": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:23:01.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "695a74667822ec0006e2736f",
+      "name": "Быстрый фильтр: подтверждение сферы",
+      "createdByID": 1907896,
+      "folderID": null,
+      "settings": {
+        "model": "gpt-5",
+        "maxTokens": 5000,
+        "temperature": 0.3,
+        "reasoningEffort": "medium"
+      },
+      "description": null,
+      "instructions": [
+        {
+          "text": [
+            "Уточни, работает ли собеседник в медицине или здравоохранении. Если нет — мягко завершай диалог. Будь краток"
+          ]
+        },
+        {
+          "text": [
+            {
+              "text": [
+                ""
+              ]
+            }
+          ]
+        }
+      ],
+      "pathToolOrder": [
+        "695a74667822ec0006e2737d",
+        "695a74667822ec0006e2737e"
+      ],
+      "webSearchTool": null,
+      "knowledgeBaseTool": null,
+      "buttonTool": null,
+      "cardTool": null,
+      "carouselTool": null,
+      "callForwardTool": null,
+      "endTool": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:22:30.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "695a74667822ec0006e27370",
+      "name": "Выбор категории сложности и режима входа",
+      "createdByID": 1907896,
+      "folderID": null,
+      "settings": {
+        "model": "gpt-5",
+        "maxTokens": 5000,
+        "temperature": 0.3,
+        "reasoningEffort": "medium"
+      },
+      "description": null,
+      "instructions": [
+        {
+          "text": [
+            "Спроси, в каком аспекте работы чаще всего возникает ощущение, что процесс можно упростить или автоматизировать (выбрать одну из категорий). Затем спроси, удобнее ли начать разговор с описания конкретной ситуации или с идеи инструмента. Будь краток"
+          ]
+        }
+      ],
+      "pathToolOrder": [
+        "695a74667822ec0006e2737f"
+      ],
+      "webSearchTool": null,
+      "knowledgeBaseTool": null,
+      "buttonTool": null,
+      "cardTool": null,
+      "carouselTool": null,
+      "callForwardTool": null,
+      "endTool": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:23:24.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "695a74667822ec0006e27371",
+      "name": "Описание ситуации или идеи",
+      "createdByID": 1907896,
+      "folderID": null,
+      "settings": {
+        "model": "claude-4-sonnet",
+        "maxTokens": 5000,
+        "temperature": 0.3,
+        "reasoningEffort": null
+      },
+      "description": null,
+      "instructions": [
+        {
+          "text": [
+            "Попроси пользователя описать одну конкретную ситуацию на работе, где возникла мысль: 'Здесь должно быть проще'. Предложи при необходимости прикрепить скриншот/фото/PDF. Если файл есть — отправь на анализ файла. Если нет — отправь на анализ текстового описания."
+          ]
+        }
+      ],
+      "pathToolOrder": [
+        "695a74667822ec0006e27380",
+        "695a74667822ec0006e27381"
+      ],
+      "webSearchTool": null,
+      "knowledgeBaseTool": null,
+      "buttonTool": null,
+      "cardTool": null,
+      "carouselTool": null,
+      "callForwardTool": null,
+      "endTool": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "695a74667822ec0006e27372",
+      "name": "Анализ файла",
+      "createdByID": 1907896,
+      "folderID": null,
+      "settings": {
+        "model": "claude-4-sonnet",
+        "maxTokens": 5000,
+        "temperature": 0.3,
+        "reasoningEffort": null
+      },
+      "description": null,
+      "instructions": [
+        {
+          "text": [
+            "Проанализируй полученный скриншот/фото/PDF: выясни, к какому рабочему процессу он относится, что в нём неудобно, какой момент вызывает напряжение. Верни результат в виде JSON с флагом наличия конкретного случая и кратким резюме ситуации."
+          ]
+        }
+      ],
+      "pathToolOrder": [
+        "695a74667822ec0006e27382",
+        "695a74667822ec0006e27383"
+      ],
+      "webSearchTool": null,
+      "knowledgeBaseTool": null,
+      "buttonTool": null,
+      "cardTool": null,
+      "carouselTool": null,
+      "callForwardTool": null,
+      "endTool": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "695a74667822ec0006e27373",
+      "name": "Анализ описания ситуации",
+      "createdByID": 1907896,
+      "folderID": null,
+      "settings": {
+        "model": "claude-4-sonnet",
+        "maxTokens": 5000,
+        "temperature": 0.3,
+        "reasoningEffort": null
+      },
+      "description": null,
+      "instructions": [
+        {
+          "text": [
+            "Проанализируй описание ситуации; определи, содержится ли в нём конкретная рабочая проблема, и в чём она заключается. Верни результат как JSON с флагом наличия случая и кратким резюме сути."
+          ]
+        }
+      ],
+      "pathToolOrder": [
+        "695a74667822ec0006e27384",
+        "695a74667822ec0006e27385"
+      ],
+      "webSearchTool": null,
+      "knowledgeBaseTool": null,
+      "buttonTool": null,
+      "cardTool": null,
+      "carouselTool": null,
+      "callForwardTool": null,
+      "endTool": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "695a74667822ec0006e27374",
+      "name": "Уточнение конкретного момента работы",
+      "createdByID": 1907896,
+      "folderID": null,
+      "settings": {
+        "model": "claude-4-sonnet",
+        "maxTokens": 5000,
+        "temperature": 0.3,
+        "reasoningEffort": null
+      },
+      "description": null,
+      "instructions": [
+        {
+          "text": [
+            "Попроси пользователя конкретизировать, в каком именно моменте работы проявляется затруднение. После получения уточнения — повтори анализ (выбери подходящий способ). Если второй раз не удаётся определить рабочий случай — переходи к мягкому завершению."
+          ]
+        }
+      ],
+      "pathToolOrder": [
+        "695a74667822ec0006e27386",
+        "695a74667822ec0006e27387"
+      ],
+      "webSearchTool": null,
+      "knowledgeBaseTool": null,
+      "buttonTool": null,
+      "cardTool": null,
+      "carouselTool": null,
+      "callForwardTool": null,
+      "endTool": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "695a74667822ec0006e27375",
+      "name": "Проверка наличия case",
+      "createdByID": 1907896,
+      "folderID": null,
+      "settings": {
+        "model": "claude-4-sonnet",
+        "maxTokens": 5000,
+        "temperature": 0.3,
+        "reasoningEffort": null
+      },
+      "description": null,
+      "instructions": [
+        {
+          "text": [
+            "Проверь результат анализа: если есть конкретный рабочий случай — продолжи; если нет — направь на уточнение."
+          ]
+        }
+      ],
+      "pathToolOrder": [
+        "695a74667822ec0006e27388",
+        "695a74667822ec0006e27389"
+      ],
+      "webSearchTool": null,
+      "knowledgeBaseTool": null,
+      "buttonTool": null,
+      "cardTool": null,
+      "carouselTool": null,
+      "callForwardTool": null,
+      "endTool": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "695a74667822ec0006e27376",
+      "name": "Определение момента процесса и задачи",
+      "createdByID": 1907896,
+      "folderID": null,
+      "settings": {
+        "model": "claude-4-sonnet",
+        "maxTokens": 5000,
+        "temperature": 0.3,
+        "reasoningEffort": null
+      },
+      "description": null,
+      "instructions": [
+        {
+          "text": [
+            "Спроси, на каком этапе работы возникает сложность (до, во время или после контакта с пациентом, администратирование, принятие решения). Затем уточни, что именно пользователь пытается сделать или понять в этот момент. Уточни, регулярно ли проблема повторяется."
+          ]
+        }
+      ],
+      "pathToolOrder": [
+        "695a74667822ec0006e2738a",
+        "695a74667822ec0006e2738b"
+      ],
+      "webSearchTool": null,
+      "knowledgeBaseTool": null,
+      "buttonTool": null,
+      "cardTool": null,
+      "carouselTool": null,
+      "callForwardTool": null,
+      "endTool": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "695a74667822ec0006e27377",
+      "name": "Потери и текущее решение",
+      "createdByID": 1907896,
+      "folderID": null,
+      "settings": {
+        "model": "claude-4-sonnet",
+        "maxTokens": 5000,
+        "temperature": 0.3,
+        "reasoningEffort": null
+      },
+      "description": null,
+      "instructions": [
+        {
+          "text": [
+            "Уточни, к каким потерям (время, деньги, уверенность, качество работы, спокойствие) приводит эта проблема, можно ли выбрать несколько. Спроси, как сейчас пользователь справляется с этой ситуацией. Оцени, значимы ли потери и устраивает ли текущее решение."
+          ]
+        }
+      ],
+      "pathToolOrder": [
+        "695a74667822ec0006e2738c",
+        "695a74667822ec0006e2738d"
+      ],
+      "webSearchTool": null,
+      "knowledgeBaseTool": null,
+      "buttonTool": null,
+      "cardTool": null,
+      "carouselTool": null,
+      "callForwardTool": null,
+      "endTool": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "695a74667822ec0006e27378",
+      "name": "Финальный черновик инструмента",
+      "createdByID": 1907896,
+      "folderID": null,
+      "settings": {
+        "model": "claude-4-sonnet",
+        "maxTokens": 5000,
+        "temperature": 0.3,
+        "reasoningEffort": null
+      },
+      "description": null,
+      "instructions": [
+        {
+          "text": [
+            "На основе всего предыдущего диалога (и файлов, если были), сформулируй черновое описание:\n— в какой рабочей ситуации возникает сложность\n— что именно сейчас не работает\n— какую задачу специалист пытается решить\n— какой цифровой инструмент мог бы здесь помогать\n— какие границы ответственности остаются за специалистом\n\nЗапрещено: медицинские рекомендации, клинические выводы, слова «фича», «продукт», «стартап», «платформа», «ИИ». Покажи черновик пользователю и предложи уточнить."
+          ]
+        }
+      ],
+      "pathToolOrder": [
+        "695a74667822ec0006e2738e"
+      ],
+      "webSearchTool": null,
+      "knowledgeBaseTool": null,
+      "buttonTool": null,
+      "cardTool": null,
+      "carouselTool": null,
+      "callForwardTool": null,
+      "endTool": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "695a74667822ec0006e27379",
+      "name": "Мягкое завершение",
+      "createdByID": 1907896,
+      "folderID": null,
+      "settings": {
+        "model": "claude-4-sonnet",
+        "maxTokens": 5000,
+        "temperature": 0.3,
+        "reasoningEffort": null
+      },
+      "description": null,
+      "instructions": [
+        {
+          "text": [
+            "Поблагодари собеседника, скажи, что его комментарии были полезны, этого достаточно для фиксации общего контекста. Предложи вернуться позже при появлении более конкретной ситуации."
+          ]
+        }
+      ],
+      "pathToolOrder": [],
+      "webSearchTool": null,
+      "knowledgeBaseTool": null,
+      "buttonTool": null,
+      "cardTool": null,
+      "carouselTool": null,
+      "callForwardTool": null,
+      "endTool": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    },
+    {
+      "id": "695a74667822ec0006e2737a",
+      "name": "Успешный кастдев",
+      "createdByID": 1907896,
+      "folderID": null,
+      "settings": {
+        "model": "claude-4-sonnet",
+        "maxTokens": 5000,
+        "temperature": 0.3,
+        "reasoningEffort": null
+      },
+      "description": null,
+      "instructions": [
+        {
+          "text": [
+            "Поблагодари пользователя за подробный разговор и подчеркни, насколько это помогает понять реальные рабочие процессы."
+          ]
+        }
+      ],
+      "pathToolOrder": [],
+      "webSearchTool": null,
+      "knowledgeBaseTool": null,
+      "buttonTool": null,
+      "cardTool": null,
+      "carouselTool": null,
+      "callForwardTool": null,
+      "endTool": null,
+      "createdAt": "2026-01-04T14:08:38.000Z",
+      "updatedAt": "2026-01-04T14:08:38.000Z",
+      "updatedByID": 1907896
+    }
+  ],
+  "agentAPITools": [],
+  "agentFlowTools": [],
+  "agentPathTools": [
+    {
+      "id": "695a74667822ec0006e2737b",
+      "name": "Пользователь готов начать",
+      "agentID": "695a74667822ec0006e2736e",
+      "description": "Пользователь дал согласие на продолжение разговора.",
+      "variableOrder": [],
+      "messages": null,
+      "createdAt": "2026-01-04T14:08:38.000Z"
+    },
+    {
+      "id": "695a74667822ec0006e2737c",
+      "name": "Пользователь не готов",
+      "agentID": "695a74667822ec0006e2736e",
+      "description": "Пользователь отказался продолжать диалог.",
+      "variableOrder": [],
+      "messages": null,
+      "createdAt": "2026-01-04T14:08:38.000Z"
+    },
+    {
+      "id": "695a74667822ec0006e2737d",
+      "name": "Работает в медицине",
+      "agentID": "695a74667822ec0006e2736f",
+      "description": "Пользователь подтвердил, что работает в медицинской сфере.",
+      "variableOrder": [],
+      "messages": null,
+      "createdAt": "2026-01-04T14:08:38.000Z"
+    },
+    {
+      "id": "695a74667822ec0006e2737e",
+      "name": "Не работает в медицине",
+      "agentID": "695a74667822ec0006e2736f",
+      "description": "Пользователь указал, что не работает в медицине.",
+      "variableOrder": [],
+      "messages": null,
+      "createdAt": "2026-01-04T14:08:38.000Z"
+    },
+    {
+      "id": "695a74667822ec0006e2737f",
+      "name": "Один из вариантов выбран, режим входа определён",
+      "agentID": "695a74667822ec0006e27370",
+      "description": "Пользователь выбрал категорию и как предпочитает начать разговор.",
+      "variableOrder": [],
+      "messages": null,
+      "createdAt": "2026-01-04T14:08:38.000Z"
+    },
+    {
+      "id": "695a74667822ec0006e27380",
+      "name": "Пользователь приложил файл",
+      "agentID": "695a74667822ec0006e27371",
+      "description": "Получен файл-свидетельство ситуации.",
+      "variableOrder": [],
+      "messages": null,
+      "createdAt": "2026-01-04T14:08:38.000Z"
+    },
+    {
+      "id": "695a74667822ec0006e27381",
+      "name": "Пользователь описал ситуацию текстом",
+      "agentID": "695a74667822ec0006e27371",
+      "description": "Получено текстовое описание ситуации.",
+      "variableOrder": [],
+      "messages": null,
+      "createdAt": "2026-01-04T14:08:38.000Z"
+    },
+    {
+      "id": "695a74667822ec0006e27382",
+      "name": "Есть конкретный рабочий случай",
+      "agentID": "695a74667822ec0006e27372",
+      "description": "По файлу удалось выделить конкретную рабочую задачу или сложность.",
+      "variableOrder": [],
+      "messages": null,
+      "createdAt": "2026-01-04T14:08:38.000Z"
+    },
+    {
+      "id": "695a74667822ec0006e27383",
+      "name": "Нет конкретного случая",
+      "agentID": "695a74667822ec0006e27372",
+      "description": "Не удалось выделить конкретный рабочий случай — требуется уточнение.",
+      "variableOrder": [],
+      "messages": null,
+      "createdAt": "2026-01-04T14:08:38.000Z"
+    },
+    {
+      "id": "695a74667822ec0006e27384",
+      "name": "Есть конкретный рабочий случай",
+      "agentID": "695a74667822ec0006e27373",
+      "description": "По описанию удалось выделить конкретную рабочую задачу или сложность.",
+      "variableOrder": [],
+      "messages": null,
+      "createdAt": "2026-01-04T14:08:38.000Z"
+    },
+    {
+      "id": "695a74667822ec0006e27385",
+      "name": "Нет конкретного случая",
+      "agentID": "695a74667822ec0006e27373",
+      "description": "Не удалось выделить конкретную рабочую ситуацию — требуется уточнить.",
+      "variableOrder": [],
+      "messages": null,
+      "createdAt": "2026-01-04T14:08:38.000Z"
+    },
+    {
+      "id": "695a74667822ec0006e27386",
+      "name": "Удалось сформулировать конкретный случай",
+      "agentID": "695a74667822ec0006e27374",
+      "description": "Пользователь конкретизировал ситуацию, и теперь удаётся её проанализировать.",
+      "variableOrder": [],
+      "messages": null,
+      "createdAt": "2026-01-04T14:08:38.000Z"
+    },
+    {
+      "id": "695a74667822ec0006e27387",
+      "name": "Не удаётся сформулировать рабочий случай",
+      "agentID": "695a74667822ec0006e27374",
+      "description": "Даже после уточнения нет явной рабочей задачи — завершить мягко.",
+      "variableOrder": [],
+      "messages": null,
+      "createdAt": "2026-01-04T14:08:38.000Z"
+    },
+    {
+      "id": "695a74667822ec0006e27388",
+      "name": "Конкретный случай подтверждён",
+      "agentID": "695a74667822ec0006e27375",
+      "description": "Переход к детализации момента процесса.",
+      "variableOrder": [],
+      "messages": null,
+      "createdAt": "2026-01-04T14:08:38.000Z"
+    },
+    {
+      "id": "695a74667822ec0006e27389",
+      "name": "Необходимо дополнительное уточнение",
+      "agentID": "695a74667822ec0006e27375",
+      "description": "Запрошено дополнительное уточнение рабочего случая.",
+      "variableOrder": [],
+      "messages": null,
+      "createdAt": "2026-01-04T14:08:38.000Z"
+    },
+    {
+      "id": "695a74667822ec0006e2738a",
+      "name": "Сложность носит регулярный характер",
+      "agentID": "695a74667822ec0006e27376",
+      "description": "Проблемная ситуация повторяется регулярно.",
+      "variableOrder": [],
+      "messages": null,
+      "createdAt": "2026-01-04T14:08:38.000Z"
+    },
+    {
+      "id": "695a74667822ec0006e2738b",
+      "name": "Сложность не повторяется регулярно",
+      "agentID": "695a74667822ec0006e27376",
+      "description": "Проблема нерегулярная — завершить мягко.",
+      "variableOrder": [],
+      "messages": null,
+      "createdAt": "2026-01-04T14:08:38.000Z"
+    },
+    {
+      "id": "695a74667822ec0006e2738c",
+      "name": "Потери значимы, нужна проработка",
+      "agentID": "695a74667822ec0006e27377",
+      "description": "Выявлены ощутимые потери, требуется проработать решение.",
+      "variableOrder": [],
+      "messages": null,
+      "createdAt": "2026-01-04T14:08:38.000Z"
+    },
+    {
+      "id": "695a74667822ec0006e2738d",
+      "name": "Потери не значимы или решение устраивает",
+      "agentID": "695a74667822ec0006e27377",
+      "description": "Потери не критичны или пользователя устраивает текущее решение.",
+      "variableOrder": [],
+      "messages": null,
+      "createdAt": "2026-01-04T14:08:38.000Z"
+    },
+    {
+      "id": "695a74667822ec0006e2738e",
+      "name": "Черновик согласован или отправлен на уточнение",
+      "agentID": "695a74667822ec0006e27378",
+      "description": "Пользователь уточнил или согласовал черновик. Завершить кастдев.",
+      "variableOrder": [],
+      "messages": null,
+      "createdAt": "2026-01-04T14:08:38.000Z"
+    }
+  ],
+  "agentFunctionTools": [],
+  "agentIntegrationTools": [],
+  "agentPathToolVariables": [],
+  "agentFlowToolVariables": [],
+  "agentMcpIntegrationTools": [],
+  "apiTools": [],
+  "apiToolInputVariables": [],
+  "integrationTools": [],
+  "functions": [],
+  "functionPaths": [],
+  "functionVariables": [],
+  "mcpServers": [],
+  "mcpServerTools": [],
+  "mcpIntegrationTools": [],
+  "project": {
+    "type": "chat",
+    "name": "cust_dev_7",
+    "image": "",
+    "teamID": "peEq9W4bED",
+    "members": [],
+    "privacy": "private",
+    "platform": "webchat",
+    "_version": 1.2,
+    "linkType": "STRAIGHT",
+    "creatorID": 1907896,
+    "updatedBy": 1907896,
+    "apiPrivacy": "public",
+    "platformData": {
+      "invocationName": "template project general"
+    },
+    "customThemes": [],
+    "aiAssistSettings": {
+      "aiPlayground": true
+    },
+    "_id": "695a7466287004b4a28c06da",
+    "updatedAt": "2026-01-04T14:08:38.263Z",
+    "devVersion": "695a7466287004b4a28c06db",
+    "liveVersion": "695a7466287004b4a28c06dc"
+  },
+  "_version": "1.2",
+  "secrets": [],
+  "variableStates": [],
+  "transcriptEvaluations": [
+    {
+      "name": "Deflection rate",
+      "default": true,
+      "description": null,
+      "type": "boolean",
+      "enabled": false,
+      "prompt": "Determine if the user requested to talk to a human in order to achieve their desired outcome.",
+      "settings": null,
+      "systemTag": null,
+      "truePrompt": "The user did not require the need to talk to a human.",
+      "falsePrompt": "The user required the need to talk to a human agent."
+    },
+    {
+      "name": "Satisfaction score",
+      "default": true,
+      "description": null,
+      "type": "number",
+      "enabled": false,
+      "prompt": "Rate the user's overall satisfaction based on the conversation, using a scale from 1 to 5.",
+      "settings": null,
+      "systemTag": null,
+      "minimumValue": 1,
+      "minimumPrompt": "Look for negative comments or expressions of dissatisfaction to rate the minimum satisfaction.",
+      "maximumValue": 5,
+      "maximumPrompt": "Identify any comments or phrases in the transcript that express the highest level of satisfaction."
+    },
+    {
+      "name": "AI summary",
+      "default": true,
+      "description": null,
+      "type": "string",
+      "enabled": false,
+      "prompt": "Look at the transcript and provide a brief summary of the conversation. Make sure to highlight the outcome of the conversation, and key moments or topics, and the overall tone of the customer.",
+      "settings": null,
+      "systemTag": null
+    }
+  ]
+}

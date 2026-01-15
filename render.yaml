@@ -1,14 +1,19 @@
 services:
   - type: web
-    name: vf-telegram-bot
+    name: vf-telegram-bot-botpress
     runtime: node
-    startCommand: npm start
+    buildCommand: npm install
+    startCommand: node index-botpress.js
     envVars:
       - key: NODE_ENV
         value: production
       - key: TELEGRAM_BOT_TOKEN
         sync: false
-      - key: VOICEFLOW_API_KEY
+      - key: TELEGRAM_CHANNEL_ID
         sync: false
-      - key: VOICEFLOW_VERSION_ID
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: BOTPRESS_API_KEY
         sync: false
