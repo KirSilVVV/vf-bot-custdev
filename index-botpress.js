@@ -1,101 +1,102 @@
 // index-botpress.js
-// Telegram Bot → Botpress API (вместо Voiceflow)
+// Telegram Bot → OpenAI GPT Customer Development Helper
 // Использует существующий бот с Supabase + Telegram Stars payments
 
 import 'dotenv/config';
 import { Telegraf } from 'telegraf';
 import { createClient } from '@supabase/supabase-js';
 import express from 'express';
-import axios from 'axios';
+import OpenAI from 'openai';
+import { chatWithAI, shouldOfferPublish } from './ai-helper.js';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const TELEGRAM_CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID;
-
-// Botpress API credentials
-const BOTPRESS_BOT_ID = 'af3598e4-87b5-410a-83ba-98188fd45e25';
-const BOTPRESS_WORKSPACE_ID = 'wkspace_01KEZ18RBPRPA7K2V786DJVNBW';
-const BOTPRESS_API_KEY = process.env.BOTPRESS_API_KEY || 'bp_bak_mOcOmZ06_bCWCYxOPxlqh2O8drVnD1rSzh8A';
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 // Validate
-if (!TELEGRAM_BOT_TOKEN || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !TELEGRAM_CHANNEL_ID || !BOTPRESS_API_KEY) {
+if (!TELEGRAM_BOT_TOKEN || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !TELEGRAM_CHANNEL_ID) {
     console.error('❌ Missing environment variables. Need:');
     console.error('   - TELEGRAM_BOT_TOKEN');
     console.error('   - SUPABASE_URL');
     console.error('   - SUPABASE_SERVICE_ROLE_KEY');
     console.error('   - TELEGRAM_CHANNEL_ID');
-    console.error('   - BOTPRESS_API_KEY');
+    console.error('   - OPENAI_API_KEY (optional)');
     process.exit(1);
 }
 
 const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+// OpenAI client (опциональный)
+const openai = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
+
 // Хранилище последних идей пользователей (для оплаты до публикации)
 const userDrafts = new Map(); // userId -> { text, userName }
 
-// Botpress Client
-const botpressClient = axios.create({
-    baseURL: `https://api.botpress.cloud/v1`,
-    headers: {
-        'Authorization': `Bearer ${BOTPRESS_API_KEY}`,
-        'Content-Type': 'application/json',
-        'x-bot-id': BOTPRESS_BOT_ID,
-    },
-});
+// Хранилище истории диалогов с AI
+const userSessions = new Map(); // userId -> { messages: [], questionCount: 0 }
 
-// Функция отправки сообщения в Botpress через Webchat API
-async function sendToBotpress(userId, messageText) {
+// ========================
+// OpenAI Chat Helper
+// ========================
+async function getAIResponse(userId, userName, userMessage) {
+    // Если OpenAI не настроен, возвращаем простой ответ
+    if (!openai) {
+        console.log('⚠️ OpenAI not configured, skipping AI conversation');
+        return null;
+    }
+
     try {
-        // Использовать Webchat API endpoint
-        const webhookUrl = `https://chat.botpress.cloud/${BOTPRESS_BOT_ID}/conversations/${userId}/messages`;
-        
-        const response = await axios.post(
-            webhookUrl,
-            {
-                type: 'text',
-                text: messageText,
-                userId: userId.toString(),
-            },
-            {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-bot-id': BOTPRESS_BOT_ID,
-                }
-            }
-        );
-        
-        console.log('✅ Message sent to Botpress');
-        
-        // Подождать ответа
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Получить последние сообщения
-        try {
-            const messagesUrl = `https://chat.botpress.cloud/${BOTPRESS_BOT_ID}/conversations/${userId}/messages`;
-            const messagesResponse = await axios.get(messagesUrl, {
-                headers: {
-                    'x-bot-id': BOTPRESS_BOT_ID,
-                }
+        // Инициализировать или получить сессию пользователя
+        if (!userSessions.has(userId)) {
+            const sessionId = `${userId}_${Date.now()}`;
+            userSessions.set(userId, { 
+                messages: [], 
+                questionCount: 0,
+                sessionId,
+                userName 
             });
-            
-            const messages = messagesResponse.data.messages || [];
-            const botMessages = messages.filter(m => m.userId !== userId.toString());
-            
-            if (botMessages.length > 0) {
-                const lastMessage = botMessages[botMessages.length - 1];
-                return lastMessage.text || lastMessage.payload?.text || 'Получил твою идею!';
-            }
-        } catch (fetchError) {
-            console.log('⚠️ Could not fetch bot response:', fetchError.message);
         }
         
-        return 'Спасибо! Обрабатываю твою идею...';
+        const session = userSessions.get(userId);
+        
+        // Добавить сообщение пользователя в историю
+        session.messages.push({ role: 'user', content: userMessage });
+        session.questionCount++;
+        
+        // Получить ответ от OpenAI
+        const aiReply = await chatWithAI(openai, session.messages);
+        
+        // Добавить ответ AI в историю
+        session.messages.push({ role: 'assistant', content: aiReply });
+        
+        console.log(`✅ OpenAI response (Q${session.questionCount}): ${aiReply.substring(0, 100)}...`);
+        
+        // 📊 Сохранить в Supabase для аналитики
+        const readyToPublish = shouldOfferPublish(session.questionCount);
+        
+        try {
+            await supabase.from('conversations').insert({
+                user_id: userId.toString(),
+                user_name: userName || 'Anonymous',
+                session_id: session.sessionId,
+                message_number: session.questionCount,
+                message_text: userMessage,
+                ai_response: aiReply,
+                ready_to_publish: readyToPublish,
+            });
+            console.log(`📊 Conversation logged: session ${session.sessionId}, msg #${session.questionCount}`);
+        } catch (dbError) {
+            console.error('⚠️ Failed to log conversation:', dbError.message);
+        }
+        
+        return aiReply;
         
     } catch (error) {
-        console.error('❌ Botpress API error:', error.response?.data || error.message);
-        return 'Произошла ошибка при обработке. Но я сохраню твою идею!';
+        console.error('❌ OpenAI API error:', error.message);
+        return null;
     }
 }
 
@@ -111,9 +112,9 @@ bot.command('start', async (ctx) => {
         `Я бот для сбора идей и фич от сообщества.\n\n` +
         `💡 Просто отправь мне свою идею, и я:\n` +
         `• Запишу её в базу данных\n` +
-        `• Опубликую в канале для голосования\n` +
+        `• Опубликую в канале @medcust_dev для голосования\n` +
         `• Дам возможность другим проголосовать\n\n` +
-        `⭐ За 300 Telegram Stars можешь поднять свою идею в топ (+10 голосов сразу)!\n\n` +
+        `⭐ За 1 Star можешь поднять свою идею в топ (+10 голосов сразу)!\n\n` +
         `📝 Напиши свою идею прямо сейчас:`
     );
 });
@@ -127,29 +128,48 @@ bot.on('text', async (ctx) => {
     console.log(`📩 Message from ${userId} (${userName}): ${messageText}`);
     
     try {
-        // 1. Отправить в Botpress AI для обработки/улучшения идеи
-        const botpressResponse = await sendToBotpress(userId, messageText);
+        // 1. Получить ответ от AI (если настроен)
+        const aiResponse = await getAIResponse(userId, userName, messageText);
         
-        // 2. Сохранить черновик
-        userDrafts.set(userId, { text: messageText, userName });
+        // 2. Проверить, готова ли идея к публикации
+        const session = userSessions.get(userId);
+        const readyToPublish = session && shouldOfferPublish(session.questionCount);
         
-        // 3. Ответить юзеру с кнопками выбора
-        await ctx.reply(
-            botpressResponse + '\n\n' +
-            '💡 Твоя идея готова! Выбери как опубликовать:',
-            {
-                reply_markup: {
-                    inline_keyboard: [
-                        [
-                            { text: '📢 Опубликовать сейчас (0 голосов)', callback_data: 'publish_free' }
-                        ],
-                        [
-                            { text: '⭐ Клинический приоритет (300 Stars)', callback_data: 'publish_priority' }
+        if (aiResponse && !readyToPublish) {
+            // AI задает дополнительные вопросы
+            await ctx.reply(aiResponse);
+            
+        } else {
+            // Идея готова к публикации или AI не настроен
+            // Сохранить черновик
+            userDrafts.set(userId, { text: messageText, userName });
+            
+            const finalMessage = aiResponse || 
+                '💡 Отлично! Твоя идея готова к публикации.';
+            
+            // Предложить варианты публикации
+            await ctx.reply(
+                finalMessage + '\n\n' +
+                '📢 Выбери как опубликовать:',
+                {
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                { text: '📢 Опубликовать сейчас (0 голосов)', callback_data: 'publish_free' }
+                            ],
+                            [
+                                { text: '⭐ Клинический приоритет (1 Star)', callback_data: 'publish_priority' }
+                            ]
                         ]
-                    ]
+                    }
                 }
+            );
+            
+            // Очистить сессию после публикации
+            if (session) {
+                userSessions.delete(userId);
             }
-        );
+        }
         
         // НЕ публикуем автоматически - ждем выбора пользователя
         
@@ -164,9 +184,9 @@ async function publishToChannel(ctx, userId, messageText, userName, initialVotes
     console.log('📝 publishToChannel called:', { userId, messageText: messageText?.substring(0, 50), userName, initialVotes });
     
     try {
-        if (!messageText || messageText.length < 10) {
+        if (!messageText || messageText.length < 3) {
             console.log('❌ Message too short:', messageText?.length);
-            await ctx.answerCbQuery('Идея слишком короткая');
+            await ctx.answerCbQuery('Идея слишком короткая (минимум 3 символа)');
             return null;
         }
         // Сохранить в Supabase
@@ -214,11 +234,11 @@ async function publishToChannel(ctx, userId, messageText, userName, initialVotes
                 reply_markup: {
                     inline_keyboard: [
                         [
-                            { text: `👍 За (${initialVotes})`, callback_data: `vote_up_${requestId}` },
+                            { text: '👍 За (0)', callback_data: `vote_up_${requestId}` },
                             { text: '👎 Против (0)', callback_data: `vote_down_${requestId}` }
                         ],
                         [
-                            { text: '⭐ Клинический приоритет (300 Stars)', callback_data: `pay_priority_${requestId}` }
+                            { text: '⭐ Клинический приоритет (1 Star)', callback_data: `pay_priority_${requestId}` }
                         ]
                     ]
                 }
@@ -274,11 +294,21 @@ bot.on('callback_query', async (ctx) => {
             
             if (requestId) {
                 await ctx.editMessageText(
-                    `✅ Опубликовано в канале!\n\n` +
+                    `✅ Опубликовано в канале @medcust_dev!\n\n` +
                     `📊 ID запроса: ${requestId}\n` +
                     `👍 Голосов: 0\n\n` +
-                    `💡 Можешь поднять в топ за 300 Stars прямо в канале`
+                    `💡 Можешь поднять в топ за 1 Star прямо в канале`
                 );
+                
+                // 📊 Отметить в аналитике что идея была опубликована
+                const session = userSessions.get(userId);
+                if (session) {
+                    await supabase.from('conversations')
+                        .update({ published: true })
+                        .eq('session_id', session.sessionId);
+                    console.log(`📊 Marked session ${session.sessionId} as published`);
+                }
+                
                 userDrafts.delete(userId);
             } else {
                 await ctx.answerCbQuery('Ошибка публикации');
@@ -309,7 +339,7 @@ bot.on('callback_query', async (ctx) => {
                     }),
                     provider_token: '',
                     currency: 'XTR',
-                    prices: [{ label: 'Приоритет', amount: 300 }]
+                    prices: [{ label: 'Приоритет', amount: 1 }]
                 });
                 console.log('✅ Invoice sent');
             } catch (err) {
@@ -320,82 +350,120 @@ bot.on('callback_query', async (ctx) => {
         }
         
         // Парсинг callback_data для остальных кнопок
-        const [action, type, requestId] = callbackData.split('_');
+        const [action, type, value] = callbackData.split('_');
         
         if (action === 'vote') {
-            // Голосование
+            // Голосование с ограничением 1 голос на юзера
             const isUpvote = type === 'up';
-            const voteChange = isUpvote ? 1 : -1;
+            const requestId = parseInt(value);
             
-            // Обновить счетчик в Supabase
-            const { data: currentRequest } = await supabase
-                .from('requests')
-                .select('vote_count')
-                .eq('id', requestId)
+            console.log(`${isUpvote ? '👍' : '👎'} Vote for request ${requestId} from user ${userId}`);
+            
+            // ✅ Проверить не голосовал ли уже этот юзер
+            const { data: existingVote } = await supabase
+                .from('votes')
+                .select('vote_type')
+                .eq('user_id', userId.toString())
+                .eq('request_id', requestId)
                 .single();
             
-            const newVoteCount = (currentRequest?.vote_count || 0) + voteChange;
+            if (existingVote) {
+                // Уже голосовал
+                if (existingVote.vote_type === type) {
+                    await ctx.answerCbQuery('✋ Ты уже проголосовал так!');
+                    return;
+                } else {
+                    // Изменить голос (с "за" на "против" или наоборот)
+                    await supabase
+                        .from('votes')
+                        .update({ vote_type: type })
+                        .eq('user_id', userId.toString())
+                        .eq('request_id', requestId);
+                    
+                    console.log(`🔄 Changed vote for request ${requestId}`);
+                }
+            } else {
+                // Новый голос
+                await supabase
+                    .from('votes')
+                    .insert({
+                        user_id: userId.toString(),
+                        user_name: userName,
+                        request_id: requestId,
+                        vote_type: type
+                    });
+                
+                console.log(`✅ New vote recorded for request ${requestId}`);
+            }
             
+            // Пересчитать голоса из таблицы votes
+            const { data: voteStats } = await supabase
+                .from('votes')
+                .select('vote_type')
+                .eq('request_id', requestId);
+            
+            const upvotes = voteStats?.filter(v => v.vote_type === 'up').length || 0;
+            const downvotes = voteStats?.filter(v => v.vote_type === 'down').length || 0;
+            const netVotes = upvotes - downvotes;
+            
+            // Обновить vote_count в requests
             await supabase
                 .from('requests')
-                .update({ vote_count: newVoteCount })
+                .update({ vote_count: netVotes })
                 .eq('id', requestId);
             
-            console.log(`✅ Vote updated: ${currentRequest?.vote_count} → ${newVoteCount}`);
+            console.log(`✅ Vote count updated: ${requestId} → ${netVotes} (${upvotes}↑ ${downvotes}↓)`);
             
             // Обновить кнопки в канале
             const newKeyboard = {
                 inline_keyboard: [
                     [
-                        { text: `👍 За (${newVoteCount})`, callback_data: `vote_up_${requestId}` },
-                        { text: `👎 Против (0)`, callback_data: `vote_down_${requestId}` }
+                        { text: `👍 За (${upvotes})`, callback_data: `vote_up_${requestId}` },
+                        { text: `👎 Против (${downvotes})`, callback_data: `vote_down_${requestId}` }
                     ],
                     [
-                        { text: '⭐ Клинический приоритет (300 Stars)', callback_data: `pay_priority_${requestId}` }
+                        { text: '⭐ Клинический приоритет (1 Star)', callback_data: `pay_priority_${requestId}` }
                     ]
                 ]
             };
             
             try {
-                // Редактировать сообщение в канале напрямую
-                await bot.telegram.editMessageReplyMarkup(
-                    chatId,
-                    messageId,
-                    undefined,
-                    newKeyboard
-                );
+                await bot.telegram.editMessageReplyMarkup(chatId, messageId, undefined, newKeyboard);
             } catch (editError) {
-                console.log('⚠️ Cannot edit channel message markup:', editError.message);
+                console.log('⚠️ Cannot edit markup:', editError.message);
             }
             
-            // Ответить пользователю
-            await ctx.answerCbQuery(`${isUpvote ? '👍' : '👎'} Голос учтен! Всего: ${newVoteCount}`);
-            
-        } else if (action === 'pay' && type === 'priority') {
+            await ctx.answerCbQuery(`${isUpvote ? '👍' : '👎'} Голос учтен! (${upvotes}↑ ${downvotes}↓)`);
+            return;
+        }
+        
+        if (action === 'pay' && type === 'priority') {
             // Платеж через Telegram Stars
+            const requestId = parseInt(value);
             console.log(`💰 Payment request for feature #${requestId}`);
             
             try {
-                // Отправить инвойс пользователю в ЛС
                 await bot.telegram.sendInvoice(userId, {
                     title: 'Клинический приоритет',
                     description: `Поднять фичу #${requestId} в приоритет (+10 голосов)`,
                     payload: JSON.stringify({ request_id: requestId }),
                     provider_token: '',
                     currency: 'XTR',
-                    prices: [{ label: 'Приоритет', amount: 300 }]
+                    prices: [{ label: 'Приоритет', amount: 1 }]
                 });
                 
-                await ctx.answerCbQuery('💳 Инвойс отправлен в личные сообщения!');
+                await ctx.answerCbQuery('💳 Инвойс отправлен!');
             } catch (invoiceError) {
                 console.error('❌ Invoice error:', invoiceError.message);
-                await ctx.answerCbQuery('⚠️ Сначала начните диалог с ботом в ЛС: /start');
+                await ctx.answerCbQuery('⚠️ Начни диалог с ботом: /start');
             }
+            return;
         }
+        
     } catch (error) {
         console.error('❌ Callback error:', error.message);
         try {
-            await ctx.answerCbQuery('⚠️ Произошла ошибка. Попробуйте позже.');
+            await ctx.answerCbQuery('⚠️ Произошла ошибка');
         } catch (e) {
             console.error('❌ Cannot answer callback:', e.message);
         }
