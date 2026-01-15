@@ -298,6 +298,9 @@ bot.on('text', async (ctx) => {
                             ],
                             [
                                 { text: '🔥 ПРИОРИТЕТ за 1⭐ (+10 голосов = ТОП!)', callback_data: 'publish_priority' }
+                            ],
+                            [
+                                { text: '⭐ Купить звёзды (если нет)', url: 'https://gaming-goods.ru/t/telegram-stars?product=966299&ref=20' }
                             ]
                         ]
                     }
@@ -332,6 +335,9 @@ bot.on('text', async (ctx) => {
                             ],
                             [
                                 { text: '🔥 ПРИОРИТЕТ за 1⭐ (+10 голосов = ТОП!)', callback_data: 'publish_priority' }
+                            ],
+                            [
+                                { text: '⭐ Купить звёзды (если нет)', url: 'https://gaming-goods.ru/t/telegram-stars?product=966299&ref=20' }
                             ]
                         ]
                     }
@@ -367,6 +373,7 @@ async function publishToChannel(ctx, userId, messageText, userName, userUsername
                 description: messageText,
                 request_type: 'feature',
                 vote_count: initialVotes,
+                has_priority: initialVotes >= 10, // Флаг приоритета
                 status: 'pending',
             })
             .select()
@@ -583,17 +590,15 @@ bot.on('callback_query', async (ctx) => {
             const downvotes = voteStats?.filter(v => v.vote_type === 'down').length || 0;
             const netVotes = upvotes - downvotes;
             
-            // Получить текущий vote_count (может содержать +10 за приоритет)
+            // Проверить есть ли приоритет (ФИКСИРОВАННЫЙ +10)
             const { data: currentRequest } = await supabase
                 .from('requests')
-                .select('vote_count')
+                .select('has_priority')
                 .eq('id', requestId)
                 .single();
             
-            const currentVotes = currentRequest?.vote_count || 0;
-            
-            // Если есть приоритетные голоса (currentVotes > netVotes), сохраняем разницу
-            const priorityBonus = Math.max(0, currentVotes - netVotes);
+            // Приоритетный бонус = ФИКСИРОВАННЫЙ +10 если оплачен
+            const priorityBonus = currentRequest?.has_priority ? 10 : 0;
             const finalVoteCount = netVotes + priorityBonus;
             
             // Обновить vote_count в requests
@@ -612,7 +617,7 @@ bot.on('callback_query', async (ctx) => {
                         { text: `👎 Против (${downvotes})`, callback_data: `vote_down_${requestId}` }
                     ],
                     [
-                        { text: '⭐ Клинический приоритет (1 Star)', callback_data: `pay_priority_${requestId}` }
+                        { text: '🔥 ПОДНЯТЬ В ТОП за 1⭐ (+10 голосов)', callback_data: `pay_priority_${requestId}` }
                     ]
                 ]
             };
@@ -620,7 +625,10 @@ bot.on('callback_query', async (ctx) => {
             try {
                 await bot.telegram.editMessageReplyMarkup(chatId, messageId, undefined, newKeyboard);
             } catch (editError) {
-                console.log('⚠️ Cannot edit markup:', editError.message);
+                // Игнорируем если кнопки не изменились (Telegram API особенность)
+                if (!editError.message.includes('message is not modified')) {
+                    console.log('⚠️ Cannot edit markup:', editError.message);
+                }
             }
             
             await ctx.answerCbQuery(`${isUpvote ? '👍' : '👎'} Голос учтен! (${upvotes}↑ ${downvotes}↓)`);
@@ -747,10 +755,13 @@ bot.on('successful_payment', async (ctx) => {
         
         const newVoteCount = (currentRequest?.vote_count || 0) + 10;
         
-        // Обновить vote_count
+        // Обновить vote_count И установить has_priority = true
         const { error } = await supabase
             .from('requests')
-            .update({ vote_count: newVoteCount })
+            .update({ 
+                vote_count: newVoteCount,
+                has_priority: true  // Установить флаг приоритета
+            })
             .eq('id', requestId);
         
         if (error) {
