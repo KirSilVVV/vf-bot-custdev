@@ -431,16 +431,27 @@ app.listen(PORT, () => {
 // Запуск Telegram бота
 if (process.env.NODE_ENV === 'production') {
     // Production: webhook mode
-    const WEBHOOK_DOMAIN = process.env.RENDER_EXTERNAL_URL || `https://your-app.onrender.com`;
+    const WEBHOOK_DOMAIN = process.env.RENDER_EXTERNAL_URL || `https://vf-bot-custdev.onrender.com`;
     bot.telegram.setWebhook(`${WEBHOOK_DOMAIN}/telegram-webhook`);
     
     app.use(bot.webhookCallback('/telegram-webhook'));
     console.log(`✅ Telegram webhook: ${WEBHOOK_DOMAIN}/telegram-webhook`);
+    
+    // Graceful shutdown для webhook
+    process.once('SIGINT', () => {
+        console.log('Shutting down...');
+        process.exit(0);
+    });
+    process.once('SIGTERM', () => {
+        console.log('Shutting down...');
+        process.exit(0);
+    });
 } else {
     // Development: polling mode
     bot.launch();
     console.log('✅ Telegram bot started (polling mode)');
+    
+    // Graceful shutdown для polling
+    process.once('SIGINT', () => bot.stop('SIGINT'));
+    process.once('SIGTERM', () => bot.stop('SIGTERM'));
 }
-
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
