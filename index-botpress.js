@@ -291,18 +291,18 @@ bot.on('callback_query', async (ctx) => {
             try {
                 // Отправить invoice
                 await ctx.telegram.sendInvoice(
-                    userId,
-                    'Клинический приоритет',
-                    `Опубликовать с клиническим приоритетом (+10 голосов сразу)\n\n"${draft.text.substring(0, 100)}..."`,
-                    JSON.stringify({ 
+                    userId, // chat_id (number)
+                    'Клинический приоритет', // title
+                    `Опубликовать с клиническим приоритетом (+10 голосов сразу)\n\n"${draft.text.substring(0, 100)}..."`, // description
+                    JSON.stringify({ // payload
                         action: 'publish_priority',
                         user_id: userId,
                         text: draft.text,
                         user_name: draft.userName
                     }),
                     '', // provider_token для Stars не нужен
-                    'XTR',
-                    [{ label: 'Клинический приоритет', amount: 300 }]
+                    'XTR', // currency
+                    [{ label: 'Клинический приоритет', amount: 300 }] // prices
                 );
                 console.log('✅ Invoice sent');
             } catch (err) {
