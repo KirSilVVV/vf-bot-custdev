@@ -672,7 +672,7 @@ bot.on('successful_payment', async (ctx) => {
                                 { text: `👎 Против (${downvotes})`, callback_data: `vote_down_${requestId}` }
                             ],
                             [
-                                { text: '⭐ Клинический приоритет (1 Star)', callback_data: `pay_priority_${requestId}` }
+                                { text: '⭐ Приоритет (1⭐)', callback_data: `pay_priority_${requestId}` }
                             ]
                         ]
                     };
