@@ -405,19 +405,32 @@ bot.on('callback_query', async (ctx) => {
             const downvotes = voteStats?.filter(v => v.vote_type === 'down').length || 0;
             const netVotes = upvotes - downvotes;
             
+            // Получить текущий vote_count (может содержать +10 за приоритет)
+            const { data: currentRequest } = await supabase
+                .from('requests')
+                .select('vote_count')
+                .eq('id', requestId)
+                .single();
+            
+            const currentVotes = currentRequest?.vote_count || 0;
+            
+            // Если есть приоритетные голоса (currentVotes > netVotes), сохраняем разницу
+            const priorityBonus = Math.max(0, currentVotes - netVotes);
+            const finalVoteCount = netVotes + priorityBonus;
+            
             // Обновить vote_count в requests
             await supabase
                 .from('requests')
-                .update({ vote_count: netVotes })
+                .update({ vote_count: finalVoteCount })
                 .eq('id', requestId);
             
-            console.log(`✅ Vote count updated: ${requestId} → ${netVotes} (${upvotes}↑ ${downvotes}↓)`);
+            console.log(`✅ Vote count updated: ${requestId} → ${finalVoteCount} (${upvotes}↑ ${downvotes}↓ + ${priorityBonus} priority)`);
             
-            // Обновить кнопки в канале
+            // Обновить кнопки в канале - показываем ИТОГОВЫЙ счет
             const newKeyboard = {
                 inline_keyboard: [
                     [
-                        { text: `👍 За (${upvotes})`, callback_data: `vote_up_${requestId}` },
+                        { text: `👍 Голосов: ${finalVoteCount}`, callback_data: `vote_up_${requestId}` },
                         { text: `👎 Против (${downvotes})`, callback_data: `vote_down_${requestId}` }
                     ],
                     [
