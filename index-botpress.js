@@ -100,15 +100,91 @@ bot.command('start', async (ctx) => {
 // Обработчик текстовых сообщений
 bot.on('text', async (ctx) => {
     const userId = ctx.from.id;
+    const userName = ctx.from.first_name || ctx.from.username || 'Anonymous';
     const messageText = ctx.message.text;
     
-    console.log(`📩 Message from ${userId}: ${messageText}`);
+    console.log(`📩 Message from ${userId} (${userName}): ${messageText}`);
     
-    // Отправить в Botpress
-    const response = await sendToBotpress(userId, messageText);
-    
-    // Ответить в Telegram
-    await ctx.reply(response);
+    try {
+        // 1. Сохранить в Supabase
+        const { data: requestData, error: insertError } = await supabase
+            .from('requests')
+            .insert({
+                user_id: userId.toString(),
+                user_name: userName,
+                request_text: messageText,
+                title: messageText.substring(0, 100),
+                description: messageText,
+                request_type: 'feature',
+                vote_count: 0,
+                status: 'pending',
+            })
+            .select()
+            .single();
+        
+        if (insertError) {
+            console.error('❌ Supabase error:', insertError);
+            await ctx.reply('Произошла ошибка при сохранении. Попробуйте позже.');
+            return;
+        }
+        
+        const requestId = requestData.id;
+        console.log(`✅ Request saved to Supabase: ${requestId}`);
+        
+        // 2. Опубликовать в канал с кнопками
+        const channelMessage = `🆕 <b>Новый запрос на фичу</b>
+
+💡 ${messageText}
+
+👤 От: ${userName}
+🆔 ID: ${requestId}
+
+👍 Голосов: 0
+
+<i>Отправлено ${new Date().toLocaleString('ru-RU')}</i>`;
+        
+        const channelPost = await ctx.telegram.sendMessage(
+            TELEGRAM_CHANNEL_ID,
+            channelMessage,
+            {
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            { text: '👍 За (0)', callback_data: `vote_up_${requestId}` },
+                            { text: '👎 Против (0)', callback_data: `vote_down_${requestId}` }
+                        ],
+                        [
+                            { text: '⭐ Клинический приоритет (300 Stars)', callback_data: `pay_priority_${requestId}` }
+                        ]
+                    ]
+                }
+            }
+        );
+        
+        console.log(`✅ Posted to channel: message_id ${channelPost.message_id}`);
+        
+        // 3. Обновить запись message_id
+        await supabase
+            .from('requests')
+            .update({ 
+                channel_message_id: channelPost.message_id,
+                channel_chat_id: TELEGRAM_CHANNEL_ID
+            })
+            .eq('id', requestId);
+        
+        // 4. Ответить пользователю
+        await ctx.reply(
+            `✅ Спасибо! Твоя идея опубликована в канале!\n\n` +
+            `📊 ID запроса: ${requestId}\n` +
+            `👍 Следи за голосованием в канале\n` +
+            `⭐ Можешь поднять её в топ за 300 Stars (+10 голосов сразу)`
+        );
+        
+    } catch (error) {
+        console.error('❌ Error processing message:', error);
+        await ctx.reply('Произошла ошибка. Попробуйте позже.');
+    }
 });
 
 // Обработчик callback кнопок (голосование и платежи)
