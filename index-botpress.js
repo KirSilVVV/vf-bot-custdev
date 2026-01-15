@@ -530,23 +530,37 @@ bot.on('successful_payment', async (ctx) => {
         return;
     }
     
-    // Обновить Supabase
+    // Обновить голоса в Supabase (+10 за клинический приоритет)
     if (payload.request_id) {
+        const requestId = payload.request_id;
+        
+        // Получить текущее количество голосов
+        const { data: currentRequest } = await supabase
+            .from('requests')
+            .select('vote_count')
+            .eq('id', requestId)
+            .single();
+        
+        const newVoteCount = (currentRequest?.vote_count || 0) + 10;
+        
+        // Обновить vote_count
         const { error } = await supabase
             .from('requests')
-            .update({
-                payment_status: 'paid',
-                votes: 10, // +10 голосов за оплату
-            })
-            .eq('id', payload.request_id);
+            .update({ vote_count: newVoteCount })
+            .eq('id', requestId);
         
         if (error) {
             console.error('❌ Supabase update error:', error);
         } else {
-            console.log('✅ Request updated in Supabase');
+            console.log(`✅ Request #${requestId} updated: +10 votes (now ${newVoteCount})`);
             
             // Отправить благодарность
-            await ctx.reply(`Спасибо за поддержку! 🙏⭐\n\nТвоя идея получила клинический приоритет и **+10 голосов** сразу!\n\n📊 Следи за каналом для голосования:\n${TELEGRAM_CHANNEL_ID}`);
+            await ctx.reply(
+                `🎉 Спасибо за поддержку!\n\n` +
+                `⭐ Идея #${requestId} получила клинический приоритет!\n` +
+                `🔥 Бонус: +10 голосов (всего ${newVoteCount})\n\n` +
+                `📊 Следи за голосованием в канале @medcust_dev`
+            );
         }
     }
 });
