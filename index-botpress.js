@@ -164,27 +164,34 @@ bot.on('text', async (ctx) => {
         const readyToPublish = session && shouldOfferPublish(session.questionCount);
         
         if (aiResponse && !readyToPublish) {
-            // AI задает дополнительные вопросы
+            // AI задает дополнительные вопросы (еще не собрана полная информация)
             await ctx.reply(aiResponse);
             
         } else if (aiResponse && readyToPublish) {
-            // AI сгенерировал финальный ответ с полным описанием и кратким драфтом
+            // Проверить что AI сгенерировал финальный ответ с полным описанием
             const { fullDescription, shortDraft } = parseAIFinalResponse(aiResponse);
             
-            // Отправить пользователю полное описание
+            // Если AI не сгенерировал полное описание - продолжаем опрос
+            if (!fullDescription || !shortDraft) {
+                console.log('⚠️ AI response does not contain full description yet, continuing interview...');
+                await ctx.reply(aiResponse);
+                return;
+            }
+            
+            // AI завершил опрос и сформировал продуктовую фичу
             await ctx.reply(aiResponse);
             
             // Сохранить оба варианта в черновик
             userDrafts.set(userId, { 
-                text: shortDraft || messageText, // Краткая версия для канала
-                fullDescription: fullDescription || messageText, // Полная версия для базы
+                text: shortDraft, // Краткая версия для канала
+                fullDescription: fullDescription, // Полная версия для базы
                 userName, 
                 userUsername 
             });
             
-            console.log(`📝 Draft saved: short=${(shortDraft || messageText).substring(0, 50)}..., full=${(fullDescription || '').substring(0, 50)}...`);
+            console.log(`📝 Feature ready: short=${shortDraft.substring(0, 50)}..., full=${fullDescription.substring(0, 50)}...`);
             
-            // Предложить варианты публикации
+            // Предложить варианты публикации ТОЛЬКО после полного описания
             await ctx.reply(
                 '📢 Выбери как опубликовать:',
                 {
