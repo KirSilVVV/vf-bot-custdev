@@ -116,8 +116,6 @@ cron.schedule('0 9 * * *', () => {
 
 console.log('⏰ Cron job настроен: обновление топа каждый день в 12:00 МСК');
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
 // OpenAI client (опциональный)
 const openai = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
 
