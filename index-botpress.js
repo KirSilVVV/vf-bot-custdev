@@ -123,6 +123,7 @@ bot.command('start', async (ctx) => {
 bot.on('text', async (ctx) => {
     const userId = ctx.from.id;
     const userName = ctx.from.first_name || ctx.from.username || 'Anonymous';
+    const userUsername = ctx.from.username || ctx.from.first_name || 'Anonymous';
     const messageText = ctx.message.text;
     
     console.log(`📩 Message from ${userId} (${userName}): ${messageText}`);
@@ -142,7 +143,7 @@ bot.on('text', async (ctx) => {
         } else {
             // Идея готова к публикации или AI не настроен
             // Сохранить черновик
-            userDrafts.set(userId, { text: messageText, userName });
+            userDrafts.set(userId, { text: messageText, userName, userUsername });
             
             const finalMessage = aiResponse || 
                 '💡 Отлично! Твоя идея готова к публикации.';
@@ -180,8 +181,8 @@ bot.on('text', async (ctx) => {
 });
 
 // Функция публикации идеи в канал
-async function publishToChannel(ctx, userId, messageText, userName, initialVotes = 0) {
-    console.log('📝 publishToChannel called:', { userId, messageText: messageText?.substring(0, 50), userName, initialVotes });
+async function publishToChannel(ctx, userId, messageText, userName, userUsername, initialVotes = 0) {
+    console.log('📝 publishToChannel called:', { userId, messageText: messageText?.substring(0, 50), userName, userUsername, initialVotes });
     
     try {
         if (!messageText || messageText.length < 3) {
@@ -215,11 +216,12 @@ async function publishToChannel(ctx, userId, messageText, userName, initialVotes
         
         // Опубликовать в канал с кнопками
         const priorityBadge = initialVotes >= 10 ? '🔥 ' : '';
+        const userMention = userUsername ? `@${userUsername}` : userName;
         const channelMessage = `${priorityBadge}🆕 <b>Новый запрос на фичу</b>
 
 💡 ${messageText}
 
-👤 От: ${userName}
+👤 От: ${userMention}
 🆔 ID: ${requestId}
 
 <i>📢 Канал: @medcust_dev</i>
@@ -286,9 +288,9 @@ bot.on('callback_query', async (ctx) => {
             }
             
             await ctx.answerCbQuery('Публикую...');
-            console.log('Calling publishToChannel with:', { userId, text: draft.text, userName: draft.userName });
+            console.log('Calling publishToChannel with:', { userId, text: draft.text, userName: draft.userName, userUsername: draft.userUsername });
             
-            const requestId = await publishToChannel(ctx, userId, draft.text, draft.userName, 0);
+            const requestId = await publishToChannel(ctx, userId, draft.text, draft.userName, draft.userUsername, 0);
             console.log('Publication result:', requestId);
             
             if (requestId) {
@@ -334,7 +336,8 @@ bot.on('callback_query', async (ctx) => {
                         action: 'publish_priority',
                         user_id: userId,
                         text: draft.text,
-                        user_name: draft.userName
+                        user_name: draft.userName,
+                        user_username: draft.userUsername
                     }),
                     provider_token: '',
                     currency: 'XTR',
@@ -518,7 +521,8 @@ bot.on('successful_payment', async (ctx) => {
             ctx, 
             payload.user_id, 
             payload.text, 
-            payload.user_name, 
+            payload.user_name,
+            payload.user_username, 
             10 // Сразу 10 голосов
         );
         
