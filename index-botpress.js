@@ -241,17 +241,78 @@ async function publishToChannel(ctx, userId, messageText, userName, initialVotes
     }
 }
 
-// Обработчик callback кнопок (голосование и платежи)
+// Обработчик callback кнопок (голосование, платежи, публикация)
 bot.on('callback_query', async (ctx) => {
     try {
         const callbackData = ctx.callbackQuery.data;
         const userId = ctx.from.id;
-        const messageId = ctx.callbackQuery.message.message_id;
-        const chatId = ctx.callbackQuery.message.chat.id;
+        const userName = ctx.from.first_name || ctx.from.username || 'Anonymous';
+        const messageId = ctx.callbackQuery.message?.message_id;
+        const chatId = ctx.callbackQuery.message?.chat.id;
         
         console.log(`🔘 Callback from ${userId}: ${callbackData}`);
         
-        // Парсинг callback_data
+        // Обработка кнопок публикации в приватном чате
+        if (callbackData === 'publish_free') {
+            console.log('📢 Publishing free...');
+            const draft = userDrafts.get(userId);
+            if (!draft) {
+                await ctx.answerCbQuery('Сначала отправь свою идею');
+                return;
+            }
+            
+            await ctx.answerCbQuery('Публикую...');
+            const requestId = await publishToChannel(ctx, userId, draft.text, draft.userName, 0);
+            
+            if (requestId) {
+                await ctx.editMessageText(
+                    `✅ Опубликовано в канале!\n\n` +
+                    `📊 ID запроса: ${requestId}\n` +
+                    `👍 Голосов: 0\n\n` +
+                    `💡 Можешь поднять в топ за 300 Stars прямо в канале`
+                );
+                userDrafts.delete(userId);
+            } else {
+                await ctx.answerCbQuery('Ошибка публикации');
+            }
+            return;
+        }
+        
+        if (callbackData === 'publish_priority') {
+            console.log('⭐ Publishing with priority payment...');
+            const draft = userDrafts.get(userId);
+            if (!draft) {
+                await ctx.answerCbQuery('Сначала отправь свою идею');
+                return;
+            }
+            
+            await ctx.answerCbQuery('Открываю оплату...');
+            
+            try {
+                // Отправить invoice
+                await ctx.telegram.sendInvoice(
+                    userId,
+                    'Клинический приоритет',
+                    `Опубликовать с клиническим приоритетом (+10 голосов сразу)\n\n"${draft.text.substring(0, 100)}..."`,
+                    JSON.stringify({ 
+                        action: 'publish_priority',
+                        user_id: userId,
+                        text: draft.text,
+                        user_name: draft.userName
+                    }),
+                    '', // provider_token для Stars не нужен
+                    'XTR',
+                    [{ label: 'Клинический приоритет', amount: 300 }]
+                );
+                console.log('✅ Invoice sent');
+            } catch (err) {
+                console.error('❌ Invoice error:', err);
+                await ctx.answerCbQuery('Ошибка отправки инвойса');
+            }
+            return;
+        }
+        
+        // Парсинг callback_data для остальных кнопок
         const [action, type, requestId] = callbackData.split('_');
         
         if (action === 'vote') {
