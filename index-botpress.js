@@ -222,9 +222,8 @@ async function publishToChannel(ctx, userId, messageText, userName, initialVotes
 👤 От: ${userName}
 🆔 ID: ${requestId}
 
-👍 Голосов: ${initialVotes}
-
-<i>Отправлено ${new Date().toLocaleString('ru-RU')}</i>`;
+<i>📢 Канал: @medcust_dev</i>
+<i>🕐 ${new Date().toLocaleString('ru-RU')}</i>`;
         
         const channelPost = await ctx.telegram.sendMessage(
             TELEGRAM_CHANNEL_ID,
