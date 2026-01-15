@@ -634,10 +634,10 @@ bot.on('successful_payment', async (ctx) => {
     if (payload.request_id) {
         const requestId = payload.request_id;
         
-        // Получить текущее количество голосов
+        // Получить текущее количество голосов и message_id
         const { data: currentRequest } = await supabase
             .from('requests')
-            .select('vote_count')
+            .select('vote_count, channel_message_id, channel_chat_id')
             .eq('id', requestId)
             .single();
         
@@ -653,6 +653,42 @@ bot.on('successful_payment', async (ctx) => {
             console.error('❌ Supabase update error:', error);
         } else {
             console.log(`✅ Request #${requestId} updated: +10 votes (now ${newVoteCount})`);
+            
+            // Обновить кнопки в канале
+            if (currentRequest?.channel_message_id && currentRequest?.channel_chat_id) {
+                try {
+                    // Пересчитать downvotes из таблицы votes
+                    const { data: voteStats } = await supabase
+                        .from('votes')
+                        .select('vote_type')
+                        .eq('request_id', requestId);
+                    
+                    const downvotes = voteStats?.filter(v => v.vote_type === 'down').length || 0;
+                    
+                    const updatedKeyboard = {
+                        inline_keyboard: [
+                            [
+                                { text: `👍 Голосов: ${newVoteCount}`, callback_data: `vote_up_${requestId}` },
+                                { text: `👎 Против (${downvotes})`, callback_data: `vote_down_${requestId}` }
+                            ],
+                            [
+                                { text: '⭐ Клинический приоритет (1 Star)', callback_data: `pay_priority_${requestId}` }
+                            ]
+                        ]
+                    };
+                    
+                    await bot.telegram.editMessageReplyMarkup(
+                        currentRequest.channel_chat_id,
+                        currentRequest.channel_message_id,
+                        undefined,
+                        updatedKeyboard
+                    );
+                    
+                    console.log(`✅ Updated channel buttons for request #${requestId}: ${newVoteCount} votes`);
+                } catch (editError) {
+                    console.log('⚠️ Cannot edit channel markup:', editError.message);
+                }
+            }
             
             // Отправить благодарность
             await ctx.reply(
