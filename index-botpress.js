@@ -297,24 +297,23 @@ bot.on('callback_query', async (ctx) => {
             await ctx.answerCbQuery('Открываю оплату...');
             
             try {
-                // Отправить invoice
-                await ctx.telegram.sendInvoice(
-                    userId, // chat_id (number)
-                    'Клинический приоритет', // title
-                    `Опубликовать с клиническим приоритетом (+10 голосов сразу)\n\n"${draft.text.substring(0, 100)}..."`, // description
-                    JSON.stringify({ // payload
+                // Отправить invoice через объектный синтаксис
+                await bot.telegram.sendInvoice(userId, {
+                    title: 'Клинический приоритет',
+                    description: `Опубликовать с приоритетом (+10 голосов)\n\n"${draft.text.substring(0, 100)}..."`,
+                    payload: JSON.stringify({ 
                         action: 'publish_priority',
                         user_id: userId,
                         text: draft.text,
                         user_name: draft.userName
                     }),
-                    '', // provider_token для Stars не нужен
-                    'XTR', // currency
-                    [{ label: 'Клинический приоритет', amount: 300 }] // prices
-                );
+                    provider_token: '',
+                    currency: 'XTR',
+                    prices: [{ label: 'Приоритет', amount: 300 }]
+                });
                 console.log('✅ Invoice sent');
             } catch (err) {
-                console.error('❌ Invoice error:', err);
+                console.error('❌ Invoice error:', err.message);
                 await ctx.answerCbQuery('Ошибка отправки инвойса');
             }
             return;
@@ -378,15 +377,14 @@ bot.on('callback_query', async (ctx) => {
             
             try {
                 // Отправить инвойс пользователю в ЛС
-                await bot.telegram.sendInvoice(
-                    userId,
-                    'Клинический приоритет',
-                    `Поднять фичу #${requestId} в приоритет и получить +10 голосов сразу`,
-                    JSON.stringify({ request_id: requestId }),
-                    '', // provider_token не нужен для Stars
-                    'XTR',
-                    [{ label: 'Клинический приоритет', amount: 300 }]
-                );
+                await bot.telegram.sendInvoice(userId, {
+                    title: 'Клинический приоритет',
+                    description: `Поднять фичу #${requestId} в приоритет (+10 голосов)`,
+                    payload: JSON.stringify({ request_id: requestId }),
+                    provider_token: '',
+                    currency: 'XTR',
+                    prices: [{ label: 'Приоритет', amount: 300 }]
+                });
                 
                 await ctx.answerCbQuery('💳 Инвойс отправлен в личные сообщения!');
             } catch (invoiceError) {
