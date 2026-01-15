@@ -356,15 +356,13 @@ bot.on('callback_query', async (ctx) => {
             
             try {
                 // Отправить invoice через объектный синтаксис
+                // Payload ограничен 128 байтами - храним только userId, остальное берём из draft
                 await bot.telegram.sendInvoice(userId, {
                     title: 'Клинический приоритет',
                     description: `Опубликовать с приоритетом (+10 голосов)\n\n"${draft.text.substring(0, 100)}..."`,
                     payload: JSON.stringify({ 
                         action: 'publish_priority',
-                        user_id: userId,
-                        text: draft.text,
-                        user_name: draft.userName,
-                        user_username: draft.userUsername
+                        user_id: userId
                     }),
                     provider_token: '',
                     currency: 'XTR',
@@ -544,12 +542,20 @@ bot.on('successful_payment', async (ctx) => {
     if (payload.action === 'publish_priority') {
         console.log('💰 Priority payment - publishing with +10 votes');
         
+        // Получить draft по userId (данные не в payload из-за лимита 128 байт)
+        const draft = userDrafts.get(payload.user_id);
+        if (!draft) {
+            console.error('❌ Draft not found for user:', payload.user_id);
+            await ctx.reply('❌ Ошибка: черновик не найден. Попробуй отправить идею заново.');
+            return;
+        }
+        
         const requestId = await publishToChannel(
             ctx, 
             payload.user_id, 
-            payload.text, 
-            payload.user_name,
-            payload.user_username, 
+            draft.text, 
+            draft.userName,
+            draft.userUsername, 
             10 // Сразу 10 голосов
         );
         
