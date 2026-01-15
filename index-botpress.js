@@ -42,39 +42,57 @@ const botpressClient = axios.create({
     },
 });
 
-// Функция отправки сообщения в Botpress
+// Функция отправки сообщения в Botpress через Webchat API
 async function sendToBotpress(userId, messageText) {
     try {
-        // Создать или получить conversation
-        const conversationResponse = await botpressClient.post(`/chat/conversations`, {
-            userId: userId.toString(),
-        });
+        // Использовать Webchat API endpoint
+        const webhookUrl = `https://chat.botpress.cloud/${BOTPRESS_BOT_ID}/conversations/${userId}/messages`;
         
-        const conversationId = conversationResponse.data.conversation.id;
-        
-        // Отправить сообщение
-        const messageResponse = await botpressClient.post(`/chat/messages`, {
-            conversationId,
-            payload: {
+        const response = await axios.post(
+            webhookUrl,
+            {
                 type: 'text',
                 text: messageText,
+                userId: userId.toString(),
             },
-        });
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-bot-id': BOTPRESS_BOT_ID,
+                }
+            }
+        );
         
-        // Получить ответ (poll messages)
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Подождать 1 сек
+        console.log('✅ Message sent to Botpress');
         
-        const messagesResponse = await botpressClient.get(`/chat/conversations/${conversationId}/messages`);
-        const botMessages = messagesResponse.data.messages.filter(m => m.direction === 'outgoing');
+        // Подождать ответа
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
-        if (botMessages.length > 0) {
-            return botMessages[botMessages.length - 1].payload.text;
+        // Получить последние сообщения
+        try {
+            const messagesUrl = `https://chat.botpress.cloud/${BOTPRESS_BOT_ID}/conversations/${userId}/messages`;
+            const messagesResponse = await axios.get(messagesUrl, {
+                headers: {
+                    'x-bot-id': BOTPRESS_BOT_ID,
+                }
+            });
+            
+            const messages = messagesResponse.data.messages || [];
+            const botMessages = messages.filter(m => m.userId !== userId.toString());
+            
+            if (botMessages.length > 0) {
+                const lastMessage = botMessages[botMessages.length - 1];
+                return lastMessage.text || lastMessage.payload?.text || 'Получил твою идею!';
+            }
+        } catch (fetchError) {
+            console.log('⚠️ Could not fetch bot response:', fetchError.message);
         }
         
-        return 'Получил сообщение!';
+        return 'Спасибо! Обрабатываю твою идею...';
+        
     } catch (error) {
         console.error('❌ Botpress API error:', error.response?.data || error.message);
-        return 'Произошла ошибка при обработке сообщения.';
+        return 'Произошла ошибка при обработке. Но я сохраню твою идею!';
     }
 }
 
@@ -106,33 +124,41 @@ bot.on('text', async (ctx) => {
     console.log(`📩 Message from ${userId} (${userName}): ${messageText}`);
     
     try {
-        // 1. Сохранить в Supabase
-        const { data: requestData, error: insertError } = await supabase
-            .from('requests')
-            .insert({
-                user_id: userId.toString(),
-                user_name: userName,
-                request_text: messageText,
-                title: messageText.substring(0, 100),
-                description: messageText,
-                request_type: 'feature',
-                vote_count: 0,
-                status: 'pending',
-            })
-            .select()
-            .single();
+        // 1. Отправить в Botpress AI для обработки/улучшения идеи
+        const botpressResponse = await sendToBotpress(userId, messageText);
         
-        if (insertError) {
-            console.error('❌ Supabase error:', insertError);
-            await ctx.reply('Произошла ошибка при сохранении. Попробуйте позже.');
-            return;
-        }
+        // 2. Ответить юзеру (Botpress может помочь уточнить идею)
+        await ctx.reply(botpressResponse);
         
-        const requestId = requestData.id;
-        console.log(`✅ Request saved to Supabase: ${requestId}`);
-        
-        // 2. Опубликовать в канал с кнопками
-        const channelMessage = `🆕 <b>Новый запрос на фичу</b>
+        // 3. Если Botpress подтвердил что это готовая фича - публикуем
+        // (пока публикуем сразу, позже можно добавить команду /submit)
+        if (messageText.length > 10) { // Минимальная валидация
+            // Сохранить в Supabase
+            const { data: requestData, error: insertError } = await supabase
+                .from('requests')
+                .insert({
+                    user_id: userId.toString(),
+                    user_name: userName,
+                    request_text: messageText,
+                    title: messageText.substring(0, 100),
+                    description: messageText,
+                    request_type: 'feature',
+                    vote_count: 0,
+                    status: 'pending',
+                })
+                .select()
+                .single();
+            
+            if (insertError) {
+                console.error('❌ Supabase error:', insertError);
+                return;
+            }
+            
+            const requestId = requestData.id;
+            console.log(`✅ Request saved to Supabase: ${requestId}`);
+            
+            // Опубликовать в канал с кнопками
+            const channelMessage = `🆕 <b>Новый запрос на фичу</b>
 
 💡 ${messageText}
 
@@ -142,44 +168,44 @@ bot.on('text', async (ctx) => {
 👍 Голосов: 0
 
 <i>Отправлено ${new Date().toLocaleString('ru-RU')}</i>`;
-        
-        const channelPost = await ctx.telegram.sendMessage(
-            TELEGRAM_CHANNEL_ID,
-            channelMessage,
-            {
-                parse_mode: 'HTML',
-                reply_markup: {
-                    inline_keyboard: [
-                        [
-                            { text: '👍 За (0)', callback_data: `vote_up_${requestId}` },
-                            { text: '👎 Против (0)', callback_data: `vote_down_${requestId}` }
-                        ],
-                        [
-                            { text: '⭐ Клинический приоритет (300 Stars)', callback_data: `pay_priority_${requestId}` }
+            
+            const channelPost = await ctx.telegram.sendMessage(
+                TELEGRAM_CHANNEL_ID,
+                channelMessage,
+                {
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                { text: '👍 За (0)', callback_data: `vote_up_${requestId}` },
+                                { text: '👎 Против (0)', callback_data: `vote_down_${requestId}` }
+                            ],
+                            [
+                                { text: '⭐ Клинический приоритет (300 Stars)', callback_data: `pay_priority_${requestId}` }
+                            ]
                         ]
-                    ]
+                    }
                 }
-            }
-        );
-        
-        console.log(`✅ Posted to channel: message_id ${channelPost.message_id}`);
-        
-        // 3. Обновить запись message_id
-        await supabase
-            .from('requests')
-            .update({ 
-                channel_message_id: channelPost.message_id,
-                channel_chat_id: TELEGRAM_CHANNEL_ID
-            })
-            .eq('id', requestId);
-        
-        // 4. Ответить пользователю
-        await ctx.reply(
-            `✅ Спасибо! Твоя идея опубликована в канале!\n\n` +
-            `📊 ID запроса: ${requestId}\n` +
-            `👍 Следи за голосованием в канале\n` +
-            `⭐ Можешь поднять её в топ за 300 Stars (+10 голосов сразу)`
-        );
+            );
+            
+            console.log(`✅ Posted to channel: message_id ${channelPost.message_id}`);
+            
+            // Обновить запись message_id
+            await supabase
+                .from('requests')
+                .update({ 
+                    channel_message_id: channelPost.message_id,
+                    channel_chat_id: TELEGRAM_CHANNEL_ID
+                })
+                .eq('id', requestId);
+            
+            // Уведомить о публикации
+            await ctx.reply(
+                `📢 Опубликовано в канале!\n\n` +
+                `📊 ID: ${requestId}\n` +
+                `⭐ Можешь поднять в топ за 300 Stars`
+            );
+        }
         
     } catch (error) {
         console.error('❌ Error processing message:', error);
