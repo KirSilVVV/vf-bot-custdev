@@ -32,6 +32,9 @@ if (!TELEGRAM_BOT_TOKEN || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !TELEG
 const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+// Хранилище последних идей пользователей (для оплаты до публикации)
+const userDrafts = new Map(); // userId -> { text, userName }
+
 // Botpress Client
 const botpressClient = axios.create({
     baseURL: `https://api.botpress.cloud/v1`,
@@ -127,91 +130,116 @@ bot.on('text', async (ctx) => {
         // 1. Отправить в Botpress AI для обработки/улучшения идеи
         const botpressResponse = await sendToBotpress(userId, messageText);
         
-        // 2. Ответить юзеру (Botpress может помочь уточнить идею)
-        await ctx.reply(botpressResponse);
+        // 2. Сохранить черновик
+        userDrafts.set(userId, { text: messageText, userName });
         
-        // 3. Если Botpress подтвердил что это готовая фича - публикуем
-        // (пока публикуем сразу, позже можно добавить команду /submit)
-        if (messageText.length > 10) { // Минимальная валидация
-            // Сохранить в Supabase
-            const { data: requestData, error: insertError } = await supabase
-                .from('requests')
-                .insert({
-                    user_id: userId.toString(),
-                    user_name: userName,
-                    request_text: messageText,
-                    title: messageText.substring(0, 100),
-                    description: messageText,
-                    request_type: 'feature',
-                    vote_count: 0,
-                    status: 'pending',
-                })
-                .select()
-                .single();
-            
-            if (insertError) {
-                console.error('❌ Supabase error:', insertError);
-                return;
-            }
-            
-            const requestId = requestData.id;
-            console.log(`✅ Request saved to Supabase: ${requestId}`);
-            
-            // Опубликовать в канал с кнопками
-            const channelMessage = `🆕 <b>Новый запрос на фичу</b>
-
-💡 ${messageText}
-
-👤 От: ${userName}
-🆔 ID: ${requestId}
-
-👍 Голосов: 0
-
-<i>Отправлено ${new Date().toLocaleString('ru-RU')}</i>`;
-            
-            const channelPost = await ctx.telegram.sendMessage(
-                TELEGRAM_CHANNEL_ID,
-                channelMessage,
-                {
-                    parse_mode: 'HTML',
-                    reply_markup: {
-                        inline_keyboard: [
-                            [
-                                { text: '👍 За (0)', callback_data: `vote_up_${requestId}` },
-                                { text: '👎 Против (0)', callback_data: `vote_down_${requestId}` }
-                            ],
-                            [
-                                { text: '⭐ Клинический приоритет (300 Stars)', callback_data: `pay_priority_${requestId}` }
-                            ]
+        // 3. Ответить юзеру с кнопками выбора
+        await ctx.reply(
+            botpressResponse + '\n\n' +
+            '💡 Твоя идея готова! Выбери как опубликовать:',
+            {
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            { text: '📢 Опубликовать сейчас (0 голосов)', callback_data: 'publish_free' }
+                        ],
+                        [
+                            { text: '⭐ Клинический приоритет (300 Stars)', callback_data: 'publish_priority' }
                         ]
-                    }
+                    ]
                 }
-            );
-            
-            console.log(`✅ Posted to channel: message_id ${channelPost.message_id}`);
-            
-            // Обновить запись message_id
-            await supabase
-                .from('requests')
-                .update({ 
-                    channel_message_id: channelPost.message_id,
-                    channel_chat_id: TELEGRAM_CHANNEL_ID
-                })
-                .eq('id', requestId);
-            
-            // Уведомить о публикации
-            await ctx.reply(
-                `📢 Опубликовано в канале!\n\n` +
-                `📊 ID: ${requestId}\n` +
-                `⭐ Можешь поднять в топ за 300 Stars`
-            );
-        }
+            }
+        );
+        
+        // НЕ публикуем автоматически - ждем выбора пользователя
         
     } catch (error) {
         console.error('❌ Error processing message:', error);
         await ctx.reply('Произошла ошибка. Попробуйте позже.');
     }
 });
+
+// Функция публикации идеи в канал
+async function publishToChannel(ctx, userId, messageText, userName, initialVotes = 0) {
+    try {
+        if (messageText.length < 10) {
+            await ctx.answerCbQuery('Идея слишком короткая');
+            return null;
+        }
+        // Сохранить в Supabase
+        const { data: requestData, error: insertError } = await supabase
+            .from('requests')
+            .insert({
+                user_id: userId.toString(),
+                user_name: userName,
+                request_text: messageText,
+                title: messageText.substring(0, 100),
+                description: messageText,
+                request_type: 'feature',
+                vote_count: initialVotes,
+                status: 'pending',
+            })
+            .select()
+            .single();
+        
+        if (insertError) {
+            console.error('❌ Supabase error:', insertError);
+            return null;
+        }
+        
+        const requestId = requestData.id;
+        console.log(`✅ Request saved to Supabase: ${requestId}`);
+        
+        // Опубликовать в канал с кнопками
+        const priorityBadge = initialVotes >= 10 ? '🔥 ' : '';
+        const channelMessage = `${priorityBadge}🆕 <b>Новый запрос на фичу</b>
+
+💡 ${messageText}
+
+👤 От: ${userName}
+🆔 ID: ${requestId}
+
+👍 Голосов: ${initialVotes}
+
+<i>Отправлено ${new Date().toLocaleString('ru-RU')}</i>`;
+        
+        const channelPost = await ctx.telegram.sendMessage(
+            TELEGRAM_CHANNEL_ID,
+            channelMessage,
+            {
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            { text: `👍 За (${initialVotes})`, callback_data: `vote_up_${requestId}` },
+                            { text: '👎 Против (0)', callback_data: `vote_down_${requestId}` }
+                        ],
+                        [
+                            { text: '⭐ Клинический приоритет (300 Stars)', callback_data: `pay_priority_${requestId}` }
+                        ]
+                    ]
+                }
+            }
+        );
+        
+        console.log(`✅ Posted to channel: message_id ${channelPost.message_id}`);
+        
+        // Обновить запись message_id
+        await supabase
+            .from('requests')
+            .update({ 
+                channel_message_id: channelPost.message_id,
+                channel_chat_id: TELEGRAM_CHANNEL_ID
+            })
+            .eq('id', requestId);
+        
+        return requestId;
+        
+    } catch (error) {
+        console.error('❌ Error publishing:', error);
+        return null;
+    }
+}
 
 // Обработчик callback кнопок (голосование и платежи)
 bot.on('callback_query', async (ctx) => {
@@ -307,6 +335,11 @@ bot.on('callback_query', async (ctx) => {
     }
 });
 
+// Pre-checkout query (подтверждение платежа)
+bot.on('pre_checkout_query', async (ctx) => {
+    await ctx.answerPreCheckoutQuery(true);
+});
+
 // Обработчик successful_payment (Telegram Stars)
 bot.on('successful_payment', async (ctx) => {
     const payment = ctx.message.successful_payment;
@@ -314,6 +347,53 @@ bot.on('successful_payment', async (ctx) => {
     const payload = JSON.parse(payment.invoice_payload);
     
     console.log(`✅ Payment received from ${userId}:`, payload);
+    
+    // Сохранить платеж в Supabase
+    const { data: paymentData } = await supabase
+        .from('payments')
+        .insert({
+            user_id: userId.toString(),
+            feature_id: payload.request_id?.toString() || null,
+            kind: 'clinical_priority',
+            stars: payment.total_amount,
+            telegram_charge_id: payment.telegram_payment_charge_id,
+        })
+        .select()
+        .single();
+    
+    console.log(`✅ Payment saved to Supabase: ${paymentData?.id}`);
+    
+    // Если это оплата ДО публикации (publish_priority)
+    if (payload.action === 'publish_priority') {
+        console.log('💰 Priority payment - publishing with +10 votes');
+        
+        const requestId = await publishToChannel(
+            ctx, 
+            payload.user_id, 
+            payload.text, 
+            payload.user_name, 
+            10 // Сразу 10 голосов
+        );
+        
+        if (requestId) {
+            // Обновить payment с request_id
+            await supabase
+                .from('payments')
+                .update({ feature_id: requestId.toString() })
+                .eq('id', paymentData.id);
+            
+            await ctx.reply(
+                `🎉 Спасибо за поддержку!\n\n` +
+                `🔥 Твоя идея опубликована с клиническим приоритетом!\n\n` +
+                `📊 ID: ${requestId}\n` +
+                `⭐ Бонус: +10 голосов сразу\n\n` +
+                `📢 Следи за голосованием в канале!`
+            );
+            
+            userDrafts.delete(payload.user_id);
+        }
+        return;
+    }
     
     // Обновить Supabase
     if (payload.request_id) {
