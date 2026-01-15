@@ -8,7 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 import express from 'express';
 import path from 'path';
 import OpenAI from 'openai';
-import { chatWithAI, shouldOfferPublish } from './ai-helper.js';
+import { chatWithAI, shouldOfferPublish, parseAIFinalResponse } from './ai-helper.js';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -167,17 +167,25 @@ bot.on('text', async (ctx) => {
             // AI задает дополнительные вопросы
             await ctx.reply(aiResponse);
             
-        } else {
-            // Идея готова к публикации или AI не настроен
-            // Сохранить черновик
-            userDrafts.set(userId, { text: messageText, userName, userUsername });
+        } else if (aiResponse && readyToPublish) {
+            // AI сгенерировал финальный ответ с полным описанием и кратким драфтом
+            const { fullDescription, shortDraft } = parseAIFinalResponse(aiResponse);
             
-            const finalMessage = aiResponse || 
-                '💡 Отлично! Твоя идея готова к публикации.';
+            // Отправить пользователю полное описание
+            await ctx.reply(aiResponse);
+            
+            // Сохранить оба варианта в черновик
+            userDrafts.set(userId, { 
+                text: shortDraft || messageText, // Краткая версия для канала
+                fullDescription: fullDescription || messageText, // Полная версия для базы
+                userName, 
+                userUsername 
+            });
+            
+            console.log(`📝 Draft saved: short=${(shortDraft || messageText).substring(0, 50)}..., full=${(fullDescription || '').substring(0, 50)}...`);
             
             // Предложить варианты публикации
             await ctx.reply(
-                finalMessage + '\n\n' +
                 '📢 Выбери как опубликовать:',
                 {
                     reply_markup: {
@@ -197,9 +205,35 @@ bot.on('text', async (ctx) => {
             if (session) {
                 userSessions.delete(userId);
             }
+        } else {
+            // AI не настроен или fallback
+            userDrafts.set(userId, { 
+                text: messageText, 
+                fullDescription: messageText,
+                userName, 
+                userUsername 
+            });
+            
+            const finalMessage = '💡 Отлично! Твоя идея готова к публикации.';
+            
+            // Предложить варианты публикации
+            await ctx.reply(
+                finalMessage + '\n\n' +
+                '📢 Выбери как опубликовать:',
+                {
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                { text: '📢 Опубликовать сейчас (0 голосов)', callback_data: 'publish_free' }
+                            ],
+                            [
+                                { text: '⭐ Клинический приоритет (1 Star)', callback_data: 'publish_priority' }
+                            ]
+                        ]
+                    }
+                }
+            );
         }
-        
-        // НЕ публикуем автоматически - ждем выбора пользователя
         
     } catch (error) {
         console.error('❌ Error processing message:', error);
@@ -208,8 +242,8 @@ bot.on('text', async (ctx) => {
 });
 
 // Функция публикации идеи в канал
-async function publishToChannel(ctx, userId, messageText, userName, userUsername, initialVotes = 0) {
-    console.log('📝 publishToChannel called:', { userId, messageText: messageText?.substring(0, 50), userName, userUsername, initialVotes });
+async function publishToChannel(ctx, userId, messageText, userName, userUsername, initialVotes = 0, fullDescription = null) {
+    console.log('📝 publishToChannel called:', { userId, messageText: messageText?.substring(0, 50), fullDesc: fullDescription?.substring(0, 50), userName, userUsername, initialVotes });
     
     try {
         if (!messageText || messageText.length < 3) {
@@ -223,7 +257,8 @@ async function publishToChannel(ctx, userId, messageText, userName, userUsername
             .insert({
                 user_id: userId.toString(),
                 user_name: userName,
-                request_text: messageText,
+                request_text: messageText, // Краткая версия для канала
+                full_description: fullDescription || messageText, // Полная версия для реализации
                 title: messageText.substring(0, 100),
                 description: messageText,
                 request_type: 'feature',
@@ -315,9 +350,17 @@ bot.on('callback_query', async (ctx) => {
             }
             
             await ctx.answerCbQuery('Публикую...');
-            console.log('Calling publishToChannel with:', { userId, text: draft.text, userName: draft.userName, userUsername: draft.userUsername });
+            console.log('Calling publishToChannel with:', { userId, text: draft.text, fullDesc: draft.fullDescription?.substring(0, 50), userName: draft.userName, userUsername: draft.userUsername });
             
-            const requestId = await publishToChannel(ctx, userId, draft.text, draft.userName, draft.userUsername, 0);
+            const requestId = await publishToChannel(
+                ctx, 
+                userId, 
+                draft.text, 
+                draft.userName, 
+                draft.userUsername, 
+                0,
+                draft.fullDescription
+            );
             console.log('Publication result:', requestId);
             
             if (requestId) {
@@ -556,7 +599,8 @@ bot.on('successful_payment', async (ctx) => {
             draft.text, 
             draft.userName,
             draft.userUsername, 
-            10 // Сразу 10 голосов
+            10, // Сразу 10 голосов
+            draft.fullDescription
         );
         
         if (requestId) {
