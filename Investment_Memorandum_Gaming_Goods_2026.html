@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Инвестиционный Меморандум - Gaming Goods Russia (2026)</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 20px;
+            color: #2d3748;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            color: white;
+            padding: 50px 40px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header h1 {
+            font-size: 48px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header .subtitle {
+            font-size: 24px;
+            opacity: 0.9;
+            margin-bottom: 30px;
+        }
+        
+        .header .meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .header .meta-item {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .header .meta-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+        
+        .header .meta-value {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .executive-summary {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 40px;
+            border-left: 5px solid #6c5ce7;
+        }
+        
+        .executive-summary h2 {
+            color: #1a202c;
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+        
+        .valuation-range {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .valuation-box {
+            flex: 0 0 350px;
+            text-align: center;
+            padding: 40px;
+            background: linear-gradient(135deg, #6c5ce7 0%, #a855f7 100%);
+            color: white;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(108, 92, 231, 0.4);
+        }
+        
+        .valuation-label {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0.9;
+            margin-bottom: 15px;
+        }
+        
+        .valuation-amount {
+            font-size: 56px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .section {
+            margin-bottom: 50px;
+        }
+        
+        .section h2 {
+            font-size: 32px;
+            color: #1a202c;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #6c5ce7;
+        }
+        
+        .section h3 {
+            font-size: 24px;
+            color: #2d3748;
+            margin: 25px 0 15px 0;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 25px 0;
+        }
+        
+        .metric-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            padding: 25px;
+            border-radius: 16px;
+            border-left: 4px solid #6c5ce7;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        
+        .metric-card.positive { border-left-color: #10b981; }
+        .metric-card.warning { border-left-color: #f59e0b; }
+        
+        .metric-label {
+            font-size: 13px;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        
+        .metric-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #1a202c;
+            margin-bottom: 5px;
+        }
+        
+        .metric-subtext {
+            font-size: 14px;
+            color: #4a5568;
+        }
+        
+        .chart-container {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 16px;
+            margin: 25px 0;
+        }
+        
+        .assumptions-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+        
+        .assumptions-table th {
+            background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+            color: white;
+            padding: 16px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        .assumptions-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            background: white;
+        }
+        
+        .assumptions-table tr:hover td {
+            background: #f7fafc;
+        }
+        
+        .highlight-box {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+        
+        .opportunity-item {
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+            border-left: 4px solid #10b981;
+            padding: 25px;
+            margin: 20px 0;
+            border-radius: 12px;
+        }
+        
+        .opportunity-item h4 {
+            margin-bottom: 12px;
+            font-size: 20px;
+            color: #065f46;
+        }
+        
+        .investment-thesis {
+            background: linear-gradient(135deg, #6c5ce7 0%, #a855f7 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            margin: 30px 0;
+        }
+        
+        .investment-thesis h3 {
+            color: white;
+            font-size: 28px;
+            margin-bottom: 25px;
+        }
+        
+        .investment-thesis ul {
+            list-style: none;
+        }
+        
+        .investment-thesis li {
+            padding: 14px 0;
+            padding-left: 35px;
+            position: relative;
+        }
+        
+        .investment-thesis li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+            font-size: 22px;
+            color: #10b981;
+        }
+        
+        .footer {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            padding: 50px 40px;
+            text-align: center;
+        }
+        
+        @media print {
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 Gaming Goods Russia</h1>
+            <div class="subtitle">Инвестиционный меморандум — Продажа 100% бизнеса</div>
+            
+            <div class="meta">
+                <div class="meta-item">
+                    <div class="meta-label">Юрисдикция</div>
+                    <div class="meta-value">🇨🇾 Кипр</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Юр. лицо</div>
+                    <div class="meta-value">Solian Enterprises Ltd</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Основной рынок</div>
+                    <div class="meta-value">🇷🇺 Россия + СНГ</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Дата анализа</div>
+                    <div class="meta-value">22 января 2026</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="executive-summary">
+            <h2>📊 Executive Summary</h2>
+            
+            <div class="highlight-box">
+                <h3 style="margin-top: 0;">Ключевые показатели (Май 2025 - Январь 2026)</h3>
+                <div class="metrics-grid">
+                    <div class="metric-card positive">
+                        <div class="metric-label">Средний MRR</div>
+                        <div class="metric-value">€20,166</div>
+                        <div class="metric-subtext">9 месяцев данных</div>
+                    </div>
+                    <div class="metric-card positive">
+                        <div class="metric-label">Годовой GMV (прогноз)</div>
+                        <div class="metric-value">€242K</div>
+                        <div class="metric-subtext">На основе среднего MRR</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Всего транзакций</div>
+                        <div class="metric-value">8,640</div>
+                        <div class="metric-subtext">За 9 месяцев</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">AOV</div>
+                        <div class="metric-value">₽2,101</div>
+                        <div class="metric-subtext">Средний чек</div>
+                    </div>
+                </div>
+            </div>
+            
+            <h3>Оценка бизнеса</h3>
+            <div class="valuation-range">
+                <div class="valuation-box">
+                    <div class="valuation-label">Цена продажи</div>
+                    <div class="valuation-amount">€726K</div>
+                    <div class="valuation-multiple" style="background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 20px; display: inline-block; margin-top: 10px;">3.0× годового GMV</div>
+                </div>
+            </div>
+            
+            <div class="investment-thesis">
+                <h3>💎 Инвестиционный тезис</h3>
+                <ul>
+                    <li><strong>Universal Digital Marketplace:</strong> Не только игровые товары, но и AI-продукты, подписки, любые цифровые товары — платформа следующего поколения</li>
+                    <li><strong>AI Products Hub:</strong> Каждый день появляются новые AI-инструменты, меняющие мир — мы место для их продажи</li>
+                    <li><strong>Автономная AI-операционная модель:</strong> Бизнес управляется ИИ-системами, минимальный OPEX €5,000/месяц</li>
+                    <li><strong>Gateway для международной торговли:</strong> Площадка для выхода на рынок РФ и СНГ для международных продавцов</li>
+                    <li><strong>Reseller-friendly:</strong> Продуктовый каталог доступен для перепродажи на маркетплейсах</li>
+                    <li><strong>SEO-трансформация:</strong> 150 страниц/день оптимизируются ИИ → органический рост трафика</li>
+                    <li><strong>Telegram-native:</strong> Mini App с встроенной оплатой через Stars</li>
+                    <li><strong>Крипто-расчеты:</strong> Выручка в криптовалюте, прямые расчеты с партнерами</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="content">
+            
+            <!-- Revenue Dynamics RUB -->
+            <div class="section">
+                <h2>💰 Динамика выручки в рублях (Май 2025 - Январь 2026)</h2>
+                
+                <div class="chart-container">
+                    <div id="revenue-rub-chart"></div>
+                </div>
+                
+                <table class="assumptions-table">
+                    <thead>
+                        <tr>
+                            <th>Месяц</th>
+                            <th>Выручка (₽)</th>
+                            <th>Выручка (€)</th>
+                            <th>Заказов</th>
+                            <th>Ср. чек (₽)</th>
+                            <th>Покупатели</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Май 2025</strong></td>
+                            <td>256,533₽</td>
+                            <td>€2,565</td>
+                            <td>233</td>
+                            <td>1,101₽</td>
+                            <td>261</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Июнь 2025</strong></td>
+                            <td>1,575,516₽</td>
+                            <td>€15,755</td>
+                            <td>942</td>
+                            <td>1,678₽</td>
+                            <td>579</td>
+                        </tr>
+                        <tr style="background: #f0fdf4;">
+                            <td><strong>Июль 2025</strong></td>
+                            <td>3,039,534₽</td>
+                            <td>€30,395</td>
+                            <td>1,649</td>
+                            <td>1,843₽</td>
+                            <td>840</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Август 2025</strong></td>
+                            <td>2,884,577₽</td>
+                            <td>€28,846</td>
+                            <td>1,310</td>
+                            <td>2,202₽</td>
+                            <td>644</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Сентябрь 2025</strong></td>
+                            <td>2,027,833₽</td>
+                            <td>€20,278</td>
+                            <td>892</td>
+                            <td>2,273₽</td>
+                            <td>597</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Октябрь 2025</strong></td>
+                            <td>2,267,317₽</td>
+                            <td>€22,673</td>
+                            <td>919</td>
+                            <td>2,467₽</td>
+                            <td>382</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Ноябрь 2025</strong></td>
+                            <td>2,120,006₽</td>
+                            <td>€21,200</td>
+                            <td>870</td>
+                            <td>2,471₽</td>
+                            <td>354</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Декабрь 2025</strong></td>
+                            <td>2,481,101₽</td>
+                            <td>€24,811</td>
+                            <td>1,029</td>
+                            <td>2,416₽</td>
+                            <td>407</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Январь 2026</strong></td>
+                            <td>1,496,684₽</td>
+                            <td>€14,967</td>
+                            <td>796</td>
+                            <td>1,880₽</td>
+                            <td>327</td>
+                        </tr>
+                        <tr style="background: #eff6ff; font-weight: bold;">
+                            <td>ИТОГО</td>
+                            <td>18,149,101₽</td>
+                            <td>€181,491</td>
+                            <td>8,640</td>
+                            <td>2,101₽</td>
+                            <td>~4,000</td>
+                        </tr>
+                        <tr style="background: #f0fdf4; font-weight: bold;">
+                            <td>Средний MRR</td>
+                            <td>2,016,567₽</td>
+                            <td>€20,166</td>
+                            <td>960</td>
+                            <td>—</td>
+                            <td>—</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div class="highlight-box">
+                    <h4>📈 Ключевые инсайты</h4>
+                    <ul style="margin-top: 15px;">
+                        <li>Пик выручки в <strong>июле 2025</strong>: ₽3.04M (€30,395)</li>
+                        <li>Стабильный MRR ₽2M+ с августа по декабрь 2025</li>
+                        <li>Средний чек вырос с ₽1,101 (май) до ₽2,471 (ноябрь) — рост на <strong>+124%</strong></li>
+                        <li>Январь 2026 (неполный месяц) уже показывает ₽1.5M за 22 дня</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Business Model -->
+            <div class="section">
+                <h2>💼 Бизнес-модель и Unit Economics</h2>
+                
+                <h3>Структура комиссий (реальные данные)</h3>
+                <div class="metrics-grid">
+                    <div class="metric-card positive">
+                        <div class="metric-label">Nutaku товары (80%)</div>
+                        <div class="metric-value">20%</div>
+                        <div class="metric-subtext">Основной доход</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">API товары (20%)</div>
+                        <div class="metric-value">3%</div>
+                        <div class="metric-subtext">Дополнительный доход</div>
+                    </div>
+                    <div class="metric-card warning">
+                        <div class="metric-label">Платежный процессинг</div>
+                        <div class="metric-value">5.5%</div>
+                        <div class="metric-subtext">Кипрская компания</div>
+                    </div>
+                    <div class="metric-card positive">
+                        <div class="metric-label">Чистая маржа</div>
+                        <div class="metric-value">11.1%</div>
+                        <div class="metric-subtext">После всех комиссий</div>
+                    </div>
+                </div>
+                
+                <h3>Операционные расходы</h3>
+                <table class="assumptions-table">
+                    <thead>
+                        <tr>
+                            <th>Статья расходов</th>
+                            <th>€/месяц</th>
+                            <th>Описание</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Серверная инфраструктура</td>
+                            <td>€2,000</td>
+                            <td>AWS/Cloud hosting, CDN, база данных</td>
+                        </tr>
+                        <tr>
+                            <td>AI сервисы</td>
+                            <td>€1,500</td>
+                            <td>OpenAI API, модерация, SEO-оптимизация</td>
+                        </tr>
+                        <tr>
+                            <td>Поддержка и модерация</td>
+                            <td>€1,000</td>
+                            <td>Минимальная команда support</td>
+                        </tr>
+                        <tr>
+                            <td>Прочие расходы</td>
+                            <td>€500</td>
+                            <td>Юридические, бухгалтерия, лицензии</td>
+                        </tr>
+                        <tr style="background: #fef3c7; font-weight: bold;">
+                            <td>ИТОГО OPEX</td>
+                            <td>€5,000</td>
+                            <td>Фиксированные расходы</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <h3>Прибыльность</h3>
+                <div class="metrics-grid">
+                    <div class="metric-card positive">
+                        <div class="metric-label">Месячная валовая прибыль</div>
+                        <div class="metric-value">€2,238</div>
+                        <div class="metric-subtext">11.1% × €20,166 MRR</div>
+                    </div>
+                    <div class="metric-card warning">
+                        <div class="metric-label">Месячная чистая прибыль</div>
+                        <div class="metric-value">-€2,762</div>
+                        <div class="metric-subtext">После OPEX €5,000</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Break-even MRR</div>
+                        <div class="metric-value">€45,045</div>
+                        <div class="metric-subtext">Для покрытия OPEX</div>
+                    </div>
+                    <div class="metric-card positive">
+                        <div class="metric-label">Потенциал с SEO</div>
+                        <div class="metric-value">€80K+</div>
+                        <div class="metric-subtext">MRR через 12 мес</div>
+                    </div>
+                </div>
+                
+                <div class="opportunity-item">
+                    <h4>💡 Почему текущая убыточность — это возможность</h4>
+                    <p><strong>Важно:</strong> Текущий отрицательный EBITDA объясняется <strong>фазой роста</strong> и инвестициями в SEO-трансформацию. При достижении MRR €45K бизнес становится безубыточным, при €80K+ (реалистичный сценарий через 12 мес) — высокорентабельным.</p>
+                    <ul style="margin: 15px 0 0 20px;">
+                        <li>OPEX можно снизить до €3,000/мес при оптимизации</li>
+                        <li>Чистая маржа 11.1% остается стабильной при любых объемах</li>
+                        <li>SEO-инвестиции уже сделаны → органический трафик растет</li>
+                        <li>При MRR €100K чистая прибыль = €6,100/мес (€73K/год)</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Market Vision -->
+            <div class="section">
+                <h2>🌐 Видение рынка: Universal Digital Marketplace</h2>
+                
+                <div class="highlight-box" style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border-left: 4px solid #10b981;">
+                    <h3 style="color: #065f46; margin-top: 0;">🚀 Не просто игровая биржа — платформа для всех цифровых товаров</h3>
+                    <p style="margin-top: 15px;">Gaming Goods Russia эволюционирует из узконишевого маркетплейса игровых товаров в <strong>универсальную платформу для продажи любых цифровых продуктов</strong>.</p>
+                </div>
+                
+                <h3>Категории роста</h3>
+                
+                <div class="opportunity-item">
+                    <h4>🤖 AI-продукты и подписки</h4>
+                    <p><strong>Каждый день появляются AI-инструменты, меняющие мир</strong> — мы становимся местом для их продажи:</p>
+                    <ul style="margin: 10px 0 0 20px;">
+                        <li>Подписки на ChatGPT Plus, Claude Pro, Midjourney</li>
+                        <li>API ключи для AI сервисов (OpenAI, Anthropic, Stable Diffusion)</li>
+                        <li>Доступы к niche AI-tools (копирайтинг, дизайн, аналитика)</li>
+                        <li>Обучающие материалы и промпты для AI</li>
+                    </ul>
+                    <p style="margin-top: 10px;"><strong>Потенциал:</strong> Рынок AI SaaS растет 40%+ в год, средний чек выше игровых товаров</p>
+                </div>
+                
+                <div class="opportunity-item">
+                    <h4>🛠️ Платформа для создателей AI-продуктов</h4>
+                    <p><strong>Каждый день появляются те, кто хочет создать свой AI-продукт</strong> и начать его продавать:</p>
+                    <ul style="margin: 10px 0 0 20px;">
+                        <li>Низкий порог входа: API для автоматической публикации товаров</li>
+                        <li>Готовая инфраструктура платежей (включая крипту)</li>
+                        <li>Встроенная аудитория покупателей</li>
+                        <li>P2P модель без рисков inventory</li>
+                    </ul>
+                </div>
+                
+                <div class="opportunity-item">
+                    <h4>🌍 Gateway для международной торговли</h4>
+                    <p><strong>Каждый день появляются продавцы</strong>, которым нужна наша биржа:</p>
+                    <ul style="margin: 10px 0 0 20px;">
+                        <li><strong>Для выхода на рынок РФ:</strong> локальные платежи (СБП, ЮMoney, QIWI), русский интерфейс, знание специфики</li>
+                        <li><strong>Для выхода на международные рынки:</strong> крипто-расчеты, Telegram Stars, глобальная аудитория</li>
+                        <li>Мультивалютность: ₽, €, $, крипта</li>
+                        <li>Готовая логистика цифровых товаров</li>
+                    </ul>
+                </div>
+                
+                <div class="opportunity-item">
+                    <h4>📦 Reseller Marketplace</h4>
+                    <p><strong>Каждый день появляются те, кто хочет зарабатывать на перепродаже</strong>:</p>
+                    <ul style="margin: 10px 0 0 20px;">
+                        <li>Доступ к продуктовому каталогу через API</li>
+                        <li>White-label решения для маркетплейсов</li>
+                        <li>Автоматическая синхронизация цен и остатков</li>
+                        <li>Партнерская программа с реверсивными комиссиями</li>
+                    </ul>
+                    <p style="margin-top: 10px;"><strong>Пример:</strong> Продавец размещает наш каталог на своем сайте/Telegram-боте, получает 3-5% с каждой продажи</p>
+                </div>
+                
+                <h3>Новые категории товаров (roadmap)</h3>
+                <div class="chart-container">
+                    <table class="assumptions-table" style="margin: 0;">
+                        <thead>
+                            <tr>
+                                <th>Категория</th>
+                                <th>Примеры товаров</th>
+                                <th>Ср. чек</th>
+                                <th>Потенциал</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>🎮 Gaming (текущее)</strong></td>
+                                <td>Nutaku, Steam, PUBG, UC</td>
+                                <td>₽2,100</td>
+                                <td>Стабильный</td>
+                            </tr>
+                            <tr style="background: #f0fdf4;">
+                                <td><strong>🤖 AI & SaaS</strong></td>
+                                <td>ChatGPT, Midjourney, API keys</td>
+                                <td>₽3,000+</td>
+                                <td>Очень высокий</td>
+                            </tr>
+                            <tr style="background: #f0fdf4;">
+                                <td><strong>📺 Streaming</strong></td>
+                                <td>Netflix, Spotify, YouTube Premium</td>
+                                <td>₽1,500</td>
+                                <td>Высокий</td>
+                            </tr>
+                            <tr style="background: #f0fdf4;">
+                                <td><strong>🎓 Edu & Courses</strong></td>
+                                <td>Udemy, Coursera, MasterClass</td>
+                                <td>₽4,000+</td>
+                                <td>Высокий</td>
+                            </tr>
+                            <tr style="background: #fef3c7;">
+                                <td><strong>💳 Gift Cards</strong></td>
+                                <td>Amazon, iTunes, Google Play</td>
+                                <td>₽2,500</td>
+                                <td>Средний</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- SEO & Growth -->
+            <div class="section">
+                <h2>📈 Прогнозы роста: SEO-трансформация</h2>
+                
+                <div class="highlight-box" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-left: 4px solid #3b82f6;">
+                    <h3 style="color: #1e40af; margin-top: 0;">🚀 AI-Powered SEO: 150 страниц/день</h3>
+                    <p style="margin-top: 15px;">Мы реализуем масштабную программу SEO-оптимизации с использованием ИИ:</p>
+                    <ul style="margin: 15px 0 0 20px;">
+                        <li><strong>150 страниц в день</strong> оптимизируются до идеального состояния</li>
+                        <li>Автоматическая генерация SEO-контента для каждого товара</li>
+                        <li>Структурированные данные (Schema.org) для всех листингов</li>
+                        <li>Оптимизация мета-тегов, заголовков, описаний</li>
+                        <li>Внутренняя перелинковка между категориями</li>
+                        <li>Multilingual SEO (русский + английский)</li>
+                    </ul>
+                    <p style="margin-top: 15px;"><strong>Ожидаемый результат через 6 месяцев:</strong></p>
+                    <ul style="margin: 10px 0 0 20px;">
+                        <li>Рост органического трафика на 200-300%</li>
+                        <li>Дополнительно €10,000-15,000/мес от SEO</li>
+                        <li>Снижение зависимости от платной рекламы</li>
+                        <li>Улучшение conversion rate на 20-30%</li>
+                    </ul>
+                </div>
+                
+                <h3>Сценарии развития (12 месяцев)</h3>
+                
+                <div class="chart-container">
+                    <div id="projections-chart"></div>
+                </div>
+                
+                <table class="assumptions-table">
+                    <thead>
+                        <tr>
+                            <th>Сценарий</th>
+                            <th>Рост MoM</th>
+                            <th>Драйверы</th>
+                            <th>MRR (M12)</th>
+                            <th>Годовой GMV</th>
+                            <th>Оценка (3× GMV)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Консервативный</strong></td>
+                            <td>5%</td>
+                            <td>Только текущие каналы</td>
+                            <td>€34,097</td>
+                            <td>€322,362</td>
+                            <td>€967K</td>
+                        </tr>
+                        <tr style="background: #eff6ff;">
+                            <td><strong>Базовый (SEO)</strong></td>
+                            <td>15%</td>
+                            <td>SEO + органический рост</td>
+                            <td>€91,194</td>
+                            <td>€681,803</td>
+                            <td>€2.05M</td>
+                        </tr>
+                        <tr style="background: #f0fdf4;">
+                            <td><strong>Оптимистичный</strong></td>
+                            <td>25%</td>
+                            <td>SEO + новые категории + AI</td>
+                            <td>€189,318</td>
+                            <td>€1,262,579</td>
+                            <td>€3.79M</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div class="highlight-box">
+                    <h4>💡 Реалистичный прогноз: Базовый сценарий</h4>
+                    <p>При росте 15% MoM (достижимо за счет SEO + запуска новых категорий):</p>
+                    <ul style="margin: 15px 0 0 20px;">
+                        <li>MRR через 12 месяцев: <strong>€91,194</strong></li>
+                        <li>Break-even достигается на месяце 6-7</li>
+                        <li>Чистая прибыль к M12: <strong>€5,122/мес</strong> (€61K/год)</li>
+                        <li>Переоценка бизнеса: <strong>€2.05M</strong> (рост в 2.8x)</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Deal Structure -->
+            <div class="section">
+                <h2>💰 Условия сделки</h2>
+                
+                <div style="background: linear-gradient(135deg, #065f46 0%, #047857 100%); color: white; padding: 40px; border-radius: 20px; text-align: center;">
+                    <h3 style="font-size: 32px; margin-bottom: 20px; color: white;">Продажа 100% Solian Enterprises Limited</h3>
+                    <div style="font-size: 72px; font-weight: bold; margin: 20px 0;">€726,000</div>
+                    <p style="font-size: 18px; opacity: 0.9;">3.0× годового GMV (€241,988 × 3)</p>
+                    
+                    <div style="display: flex; justify-content: center; gap: 40px; margin-top: 30px; flex-wrap: wrap;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold;">100%</div>
+                            <div style="font-size: 14px; opacity: 0.8;">Доля в компании</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold;">2 недели</div>
+                            <div style="font-size: 14px; opacity: 0.8;">До closing</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold;">Кипр</div>
+                            <div style="font-size: 14px; opacity: 0.8;">Юрисдикция</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <h3>Что входит в сделку</h3>
+                <div class="metrics-grid">
+                    <div class="metric-card positive">
+                        <div class="metric-label">Домен и бренд</div>
+                        <div class="metric-value">✓</div>
+                        <div class="metric-subtext">gaming-goods.ru</div>
+                    </div>
+                    <div class="metric-card positive">
+                        <div class="metric-label">Клиентская база</div>
+                        <div class="metric-value">~4,000</div>
+                        <div class="metric-subtext">Активных покупателей</div>
+                    </div>
+                    <div class="metric-card positive">
+                        <div class="metric-label">Кодовая база</div>
+                        <div class="metric-value">✓</div>
+                        <div class="metric-subtext">Полный исходный код</div>
+                    </div>
+                    <div class="metric-card positive">
+                        <div class="metric-label">AI системы</div>
+                        <div class="metric-value">✓</div>
+                        <div class="metric-subtext">Все автоматизации</div>
+                    </div>
+                    <div class="metric-card positive">
+                        <div class="metric-label">Платежные интеграции</div>
+                        <div class="metric-value">✓</div>
+                        <div class="metric-subtext">СБП, крипта, Telegram</div>
+                    </div>
+                    <div class="metric-card positive">
+                        <div class="metric-label">Партнерская сеть</div>
+                        <div class="metric-value">✓</div>
+                        <div class="metric-subtext">Контракты с поставщиками</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- GA4 Data -->
+            <div class="section">
+                <h2>📊 Google Analytics 4 (последние 30 дней)</h2>
+                
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Активные пользователи</div>
+                        <div class="metric-value">10,920</div>
+                        <div class="metric-subtext">За 30 дней</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Сессии</div>
+                        <div class="metric-value">13,764</div>
+                        <div class="metric-subtext">Avg: 459/день</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Просмотры страниц</div>
+                        <div class="metric-value">39,701</div>
+                        <div class="metric-subtext">2.88 стр/сессия</div>
+                    </div>
+                    <div class="metric-card positive">
+                        <div class="metric-label">Конверсии</div>
+                        <div class="metric-value">890</div>
+                        <div class="metric-subtext">6.5% conversion rate</div>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <div id="ga4-chart"></div>
+                </div>
+            </div>
+            
+        </div>
+        
+        <div class="footer">
+            <h3>Контактная информация</h3>
+            <p style="margin: 20px 0; font-size: 18px;">
+                <strong>Gaming Goods (gaming-goods.ru)</strong><br/>
+                Solian Enterprises Limited<br/>
+                Cyprus
+            </p>
+            <p style="font-size: 12px; opacity: 0.6; margin-top: 30px;">
+                Документ подготовлен: 22 января 2026<br/>
+                Конфиденциально — только для потенциальных инвесторов<br/>
+                Данные основаны на PostgreSQL + Google Analytics 4
+            </p>
+        </div>
+    </div>
+    
+    <script>
+        // Revenue in RUB Chart
+        const monthsRub = ['Май 25', 'Июн 25', 'Июл 25', 'Авг 25', 'Сен 25', 'Окт 25', 'Ноя 25', 'Дек 25', 'Янв 26'];
+        const revenueRub = [256533, 1575516, 3039534, 2884577, 2027833, 2267317, 2120006, 2481101, 1496684];
+        const revenueEur = revenueRub.map(r => r / 100);
+        
+        Plotly.newPlot('revenue-rub-chart', [
+            {
+                x: monthsRub,
+                y: revenueRub,
+                name: 'Выручка (₽)',
+                type: 'bar',
+                marker: {color: '#6c5ce7'},
+                yaxis: 'y',
+                text: revenueRub.map(v => `₽${(v/1000).toFixed(0)}K`),
+                textposition: 'outside'
+            },
+            {
+                x: monthsRub,
+                y: revenueEur,
+                name: 'Выручка (€)',
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: {color: '#10b981', width: 3},
+                marker: {size: 10},
+                yaxis: 'y2'
+            }
+        ], {
+            title: 'Динамика выручки (Май 2025 - Январь 2026)',
+            yaxis: {title: 'Рубли (₽)', side: 'left'},
+            yaxis2: {title: 'Евро (€)', overlaying: 'y', side: 'right'},
+            height: 450,
+            showlegend: true,
+            legend: {x: 0.1, y: 1.1, orientation: 'h'}
+        }, {responsive: true});
+        
+        // Projections Chart
+        const projMonths = ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9', 'M10', 'M11', 'M12'];
+        const conservative = [20166];
+        const base = [20166];
+        const optimistic = [20166];
+        
+        for (let i = 1; i < 12; i++) {
+            conservative.push(conservative[i-1] * 1.05);
+            base.push(base[i-1] * 1.15);
+            optimistic.push(optimistic[i-1] * 1.25);
+        }
+        
+        Plotly.newPlot('projections-chart', [
+            {
+                x: projMonths,
+                y: conservative,
+                name: 'Консервативный (5%)',
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: {color: '#94a3b8', dash: 'dot'}
+            },
+            {
+                x: projMonths,
+                y: base,
+                name: 'Базовый + SEO (15%)',
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: {color: '#6c5ce7', width: 3},
+                fill: 'tonexty',
+                fillcolor: 'rgba(108, 92, 231, 0.1)'
+            },
+            {
+                x: projMonths,
+                y: optimistic,
+                name: 'Оптимистичный (25%)',
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: {color: '#10b981', dash: 'dash'}
+            },
+            {
+                x: projMonths,
+                y: Array(12).fill(45045),
+                name: 'Break-even (€45K)',
+                type: 'scatter',
+                mode: 'lines',
+                line: {color: '#f59e0b', dash: 'dashdot', width: 2}
+            }
+        ], {
+            title: 'Прогноз MRR на 12 месяцев (€)',
+            xaxis: {title: 'Месяц'},
+            yaxis: {title: 'MRR (€)'},
+            height: 450
+        }, {responsive: true});
+        
+        // GA4 Chart
+        const ga4Dates = ['07.01', '06.01', '21.01', '08.01', '09.01', '31.12', '03.01', '28.12', '05.01', '04.01', '29.12', '02.01', '01.01', '26.12', '19.01', '18.01', '30.12', '10.01', '20.01', '17.01', '15.01', '11.01', '24.12', '13.01', '16.01', '14.01', '25.12', '27.12', '12.01', '23.12'];
+        const ga4Users = [1444, 1019, 695, 424, 416, 341, 329, 315, 315, 310, 307, 302, 298, 284, 283, 282, 275, 272, 272, 267, 266, 264, 261, 251, 248, 247, 245, 234, 231, 223];
+        const ga4Sessions = [1804, 1155, 778, 541, 553, 408, 415, 435, 383, 363, 389, 369, 341, 361, 354, 367, 353, 376, 361, 334, 356, 355, 329, 335, 356, 331, 316, 333, 328, 285];
+        
+        Plotly.newPlot('ga4-chart', [
+            {
+                x: ga4Dates,
+                y: ga4Users,
+                name: 'Пользователи',
+                type: 'bar',
+                marker: {color: '#6c5ce7'}
+            },
+            {
+                x: ga4Dates,
+                y: ga4Sessions,
+                name: 'Сессии',
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: {color: '#10b981', width: 2},
+                yaxis: 'y2'
+            }
+        ], {
+            title: 'GA4: Активность пользователей (последние 30 дней)',
+            yaxis: {title: 'Пользователи'},
+            yaxis2: {title: 'Сессии', overlaying: 'y', side: 'right'},
+            height: 400
+        }, {responsive: true});
+    </script>
+</body>
+</html>
