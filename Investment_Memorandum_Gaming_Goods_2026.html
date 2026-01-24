@@ -356,8 +356,145 @@
         }
         
         @media print {
-            body { background: white; padding: 0; }
-            .container { box-shadow: none; }
+            @page {
+                size: A4 landscape;
+                margin: 15mm;
+            }
+            
+            body { 
+                background: white; 
+                padding: 0;
+                font-size: 11pt;
+            }
+            
+            .container { 
+                box-shadow: none;
+                max-width: 100%;
+                border-radius: 0;
+            }
+            
+            /* Предотвращаем разрывы внутри важных блоков */
+            .header,
+            .executive-summary,
+            .section,
+            .metrics-grid,
+            .metric-card,
+            .highlight-box,
+            .comparison-table,
+            table,
+            .chart-container,
+            .content-box {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            
+            /* Заголовки всегда с контентом */
+            h2, h3, h4 {
+                page-break-after: avoid;
+                break-after: avoid;
+            }
+            
+            /* Разрывы страниц перед основными секциями */
+            .section {
+                page-break-before: auto;
+            }
+            
+            /* Не разрывать таблицы */
+            table {
+                page-break-inside: avoid;
+            }
+            
+            table tr {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            
+            /* Уменьшаем отступы для компактности */
+            .header {
+                padding: 30px 30px;
+            }
+            
+            .content {
+                padding: 20px 30px;
+            }
+            
+            .section {
+                margin-bottom: 30px;
+            }
+            
+            .section h2 {
+                font-size: 24pt;
+                margin-bottom: 15px;
+                padding-bottom: 10px;
+            }
+            
+            .section h3 {
+                font-size: 18pt;
+                margin: 15px 0 10px 0;
+            }
+            
+            .metrics-grid {
+                gap: 15px;
+                margin: 15px 0;
+            }
+            
+            .metric-card {
+                padding: 15px;
+            }
+            
+            .metric-value {
+                font-size: 24pt;
+            }
+            
+            /* Скрываем интерактивные элементы */
+            .plotly-modebar {
+                display: none !important;
+            }
+            
+            /* Графики - уменьшаем высоту */
+            .chart-container {
+                height: 300px !important;
+            }
+            
+            /* Улучшаем читаемость таблиц */
+            table {
+                font-size: 10pt;
+            }
+            
+            table th {
+                background: #2d3748 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            /* Сохраняем цвета фона */
+            .highlight-box,
+            .content-box,
+            .metric-card,
+            .executive-summary {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            /* Компактный header для печати */
+            .header h1 {
+                font-size: 36pt;
+                margin-bottom: 8px;
+            }
+            
+            .header .subtitle {
+                font-size: 18pt;
+                margin-bottom: 15px;
+            }
+            
+            .header .meta {
+                gap: 15px;
+                margin-top: 15px;
+            }
+            
+            .header .meta-item {
+                padding: 10px;
+            }
         }
     </style>
 </head>
