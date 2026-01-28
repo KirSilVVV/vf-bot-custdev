@@ -1353,7 +1353,7 @@ if (process.env.NODE_ENV === 'production') {
                     {
                         chat_id: chatId,
                         title: '🧬 Клинический приоритет',
-                        description: `Feature ${feature_id}`,
+                        description: `Функция ${feature_id}`,
                         payload: payloadStr,
                         provider_token: '', // Empty for Telegram Stars
                         currency: 'XTR',
